@@ -13,9 +13,17 @@ export const getPost = async (req, res) => {
 export const addComment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { comment } = req.body;
+    const { userId, text } = req.body;
     const post = await Post.findById(id);
-    post.comments.push(comment);
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const commentObj = {
+      userId,
+      username: `${user.firstName} ${user.lastName}`,
+      userPicturePath: user.picturePath,
+      text,
+    };
+    post.comments.push(commentObj);
     const updatedPost = await Post.findByIdAndUpdate(
       id,
       { comments: post.comments },

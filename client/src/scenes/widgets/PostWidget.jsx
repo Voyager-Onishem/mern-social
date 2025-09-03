@@ -5,6 +5,7 @@ import {
   ShareOutlined,
 } from "@mui/icons-material";
 import { Box, Divider, IconButton, Typography, useTheme } from "@mui/material";
+import Comment from "components/Comment";
 import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
@@ -73,7 +74,10 @@ const PostWidget = ({
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ comment: commentText }),
+        body: JSON.stringify({
+          userId: loggedInUserId,
+          text: commentText,
+        }),
       });
       const updatedPost = await response.json();
       dispatch(setPost({ post: updatedPost }));
@@ -161,11 +165,18 @@ const PostWidget = ({
                 }}
               >
                 {[...currentComments].reverse().map((comment, i) => (
-                  <Box key={`${name}-${i}`}>
+                  <Box key={i}>
                     <Divider />
-                    <Typography sx={{ color: main, m: "0.5rem 0", pl: "1rem" }}>
-                      {comment}
-                    </Typography>
+                    {/* If comment is an object, pass props; else fallback to string */}
+                    {typeof comment === 'object' && comment !== null ? (
+                      <Comment 
+                        username={comment.username || "Unknown"}
+                        text={comment.text || comment.comment || ""}
+                        userPicturePath={comment.userPicturePath}
+                      />
+                    ) : (
+                      <Comment username="" text={comment} />
+                    )}
                   </Box>
                 ))}
                 <Divider />
