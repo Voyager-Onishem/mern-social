@@ -10,7 +10,12 @@ const Comment = ({ username, text, userPicturePath }) => {
         <Typography variant="subtitle2" fontWeight="bold">
           {username}
         </Typography>
-        <Typography variant="body2">{text}</Typography>
+        {/* Render GIF if text contains a Giphy URL, else render as text */}
+        {typeof text === 'string' && text.match(/https?:\/\/(media\.)?giphy\.com\//i) ? (
+          <img src={text.trim()} alt="GIF" style={{ maxWidth: 180, borderRadius: 8, marginTop: 4 }} />
+        ) : (
+          <Typography variant="body2">{text}</Typography>
+        )}
       </Box>
     </Box>
   );

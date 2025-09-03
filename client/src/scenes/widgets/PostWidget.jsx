@@ -3,6 +3,7 @@ import {
   FavoriteBorderOutlined,
   FavoriteOutlined,
   ShareOutlined,
+  GifBoxOutlined,
 } from "@mui/icons-material";
 import { Box, Divider, IconButton, Typography, useTheme } from "@mui/material";
 import Comment from "components/Comment";
@@ -10,6 +11,7 @@ import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
 import { useState } from "react";
+import GiphyPicker from "components/GiphyPicker";
 import { useDispatch, useSelector } from "react-redux";
 import { setPost } from "state";
 
@@ -30,6 +32,7 @@ const PostWidget = ({
   const [commentText, setCommentText] = useState("");
   const [currentComments, setCurrentComments] = useState(comments || []);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [giphyOpen, setGiphyOpen] = useState(false);
   const dispatch = useDispatch();
   const token = useSelector((state) => state.token);
   const loggedInUserId = useSelector((state) => state.user._id);
@@ -86,6 +89,11 @@ const PostWidget = ({
     } catch (err) {
       // Optionally handle error
     }
+  }
+
+  // Insert GIF URL into comment
+  function handleGifSelect(gifUrl) {
+    setCommentText((prev) => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + gifUrl + ' ');
   }
 
   // Like handler
@@ -190,6 +198,9 @@ const PostWidget = ({
                   style={{ flex: 1, padding: "0.5rem", borderRadius: "1rem", border: `1px solid ${main}` }}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddComment(); }}
                 />
+                <IconButton onClick={() => setGiphyOpen(true)} title="Add GIF">
+                  <GifBoxOutlined />
+                </IconButton>
                 <button
                   onClick={handleAddComment}
                   style={{
@@ -212,6 +223,7 @@ const PostWidget = ({
                 >
                   Post
                 </button>
+                <GiphyPicker open={giphyOpen} onClose={() => setGiphyOpen(false)} onSelect={handleGifSelect} />
               </Box>
             </>
           )}

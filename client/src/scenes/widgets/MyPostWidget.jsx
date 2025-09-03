@@ -24,6 +24,7 @@ import WidgetWrapper from "components/WidgetWrapper";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setPosts } from "state";
+import GiphyPicker from "components/GiphyPicker";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -32,6 +33,7 @@ const MyPostWidget = ({ picturePath }) => {
   const [isImage, setIsImage] = useState(false);
   const [image, setImage] = useState(null);
   const [post, setPost] = useState("");
+  const [giphyOpen, setGiphyOpen] = useState(false);
   const { palette } = useTheme();
   const { _id } = useSelector((state) => state.user);
   const token = useSelector((state) => state.token);
@@ -59,6 +61,10 @@ const MyPostWidget = ({ picturePath }) => {
     setPost("");
   };
 
+  const insertGifIntoPost = (gifUrl) => {
+    setPost((prev) => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + gifUrl + ' ');
+  };
+
   return (
     <WidgetWrapper>
       <FlexBetween gap="1.5rem">
@@ -75,6 +81,16 @@ const MyPostWidget = ({ picturePath }) => {
           }}
         />
       </FlexBetween>
+      {/* Simple preview if a GIF URL is present in the post text */}
+      {typeof post === 'string' && post.match(/https?:\/\/(media\.)?giphy\.com\//i) && (
+        <Box mt={1}>
+          <img
+            src={post.split(/\s+/).find((t) => /https?:\/\/(media\.)?giphy\.com\//i.test(t))}
+            alt="GIF Preview"
+            style={{ maxWidth: 200, borderRadius: 8 }}
+          />
+        </Box>
+      )}
       {isImage && (
         <Box
           border={`1px solid ${medium}`}
@@ -135,9 +151,9 @@ const MyPostWidget = ({ picturePath }) => {
 
         {isNonMobileScreens ? (
           <>
-            <FlexBetween gap="0.25rem">
+            <FlexBetween gap="0.25rem" onClick={() => setGiphyOpen(true)} sx={{ cursor: 'pointer' }}>
               <GifBoxOutlined sx={{ color: mediumMain }} />
-              <Typography color={mediumMain}>Clip</Typography>
+              <Typography color={mediumMain}>GIF</Typography>
             </FlexBetween>
 
             <FlexBetween gap="0.25rem">
@@ -168,6 +184,15 @@ const MyPostWidget = ({ picturePath }) => {
           POST
         </Button>
       </FlexBetween>
+
+      <GiphyPicker
+        open={giphyOpen}
+        onClose={() => setGiphyOpen(false)}
+        onSelect={(url) => {
+          insertGifIntoPost(url);
+          setGiphyOpen(false);
+        }}
+      />
     </WidgetWrapper>
   );
 };
