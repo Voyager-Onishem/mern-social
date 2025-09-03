@@ -11,6 +11,7 @@ import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
 import { useState } from "react";
+import { extractFirstGiphyUrl, isGiphyUrl } from "utils/isGiphyUrl";
 import GiphyPicker from "components/GiphyPicker";
 import { useDispatch, useSelector } from "react-redux";
 import { setPost } from "state";
@@ -118,9 +119,29 @@ const PostWidget = ({
         subtitle={location}
         userPicturePath={userPicturePath}
       />
-      <Typography color={main} sx={{ mt: "1rem" }}>
-        {description}
-      </Typography>
+      {(() => {
+        const rawDesc = typeof description === 'string' ? description : '';
+        const gifUrl = extractFirstGiphyUrl(rawDesc);
+        const textWithoutGif = gifUrl ? rawDesc.replace(gifUrl, '').trim() : rawDesc;
+        return (
+          <>
+            {textWithoutGif && (
+              <Typography color={main} sx={{ mt: "1rem" }}>
+                {textWithoutGif}
+              </Typography>
+            )}
+            {gifUrl && (
+              <Box mt={textWithoutGif ? 1 : 0.5}>
+                <img
+                  src={gifUrl}
+                  alt="GIF"
+                  style={{ maxWidth: 200, borderRadius: 8 }}
+                />
+              </Box>
+            )}
+          </>
+        );
+      })()}
       {picturePath && (
         <img
           width="100%"

@@ -25,6 +25,7 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setPosts } from "state";
 import GiphyPicker from "components/GiphyPicker";
+import { extractFirstGiphyUrl, isGiphyUrl } from "utils/isGiphyUrl";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -82,10 +83,10 @@ const MyPostWidget = ({ picturePath }) => {
         />
       </FlexBetween>
       {/* Simple preview if a GIF URL is present in the post text */}
-      {typeof post === 'string' && post.match(/https?:\/\/(media\.)?giphy\.com\//i) && (
+      {typeof post === 'string' && isGiphyUrl(post) && (
         <Box mt={1}>
           <img
-            src={post.split(/\s+/).find((t) => /https?:\/\/(media\.)?giphy\.com\//i.test(t))}
+            src={extractFirstGiphyUrl(post) || undefined}
             alt="GIF Preview"
             style={{ maxWidth: 200, borderRadius: 8 }}
           />
