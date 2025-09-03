@@ -53,7 +53,25 @@ const storage = multer.diskStorage({
     }
   },
 });
-const upload = multer({ storage });
+// Accept common images and web-friendly video formats
+const MAX_FILE_SIZE_MB = parseInt(process.env.MAX_FILE_SIZE_MB || "25", 10);
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_FILE_SIZE_MB * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const mime = file.mimetype || "";
+    const allowed = mime.startsWith("image/") ||
+      mime === "video/mp4" ||
+      mime === "video/webm" ||
+      mime === "video/ogg";
+    if (!allowed) {
+      const err = new Error("INVALID_FILE_TYPE");
+      err.code = "INVALID_FILE_TYPE";
+      return cb(err);
+    }
+    cb(null, true);
+  },
+});
 
 /* ROUTES WITH FILES */
 app.post("/auth/register", upload.single("picture"), register);
@@ -63,6 +81,19 @@ app.post("/posts", verifyToken, upload.single("picture"), createPost);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/posts", postRoutes);
+
+// Multer/Upload error handler
+app.use((err, req, res, next) => {
+  if (err && (err.code === "LIMIT_FILE_SIZE" || err.code === "INVALID_FILE_TYPE")) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ message: `File too large. Max ${MAX_FILE_SIZE_MB}MB` });
+    }
+    if (err.code === "INVALID_FILE_TYPE") {
+      return res.status(400).json({ message: "Invalid file type. Only images and MP4/WebM/OGG videos are allowed." });
+    }
+  }
+  next(err);
+});
 
 /* MONGOOSE SETUP */
 const PORT = process.env.PORT || 6001;

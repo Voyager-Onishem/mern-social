@@ -19,11 +19,10 @@ const Comment = ({ username, text, userPicturePath, createdAt }) => {
           </Typography>
           {(() => {
             if (!createdAt) return null;
-            const label = timeAgo(
-              typeof createdAt === 'string' && createdAt.length === 24
-                ? objectIdToDate(createdAt)
-                : createdAt
-            );
+            // Only treat 24-char hex strings as ObjectIds; ISO strings are also ~24 chars
+            const isHexObjectId = typeof createdAt === 'string' && /^[a-fA-F0-9]{24}$/.test(createdAt);
+            const inputDate = isHexObjectId ? objectIdToDate(createdAt) : createdAt;
+            const label = timeAgo(inputDate);
             return label ? (
               <Typography variant="caption" color="text.secondary">{label}</Typography>
             ) : null;

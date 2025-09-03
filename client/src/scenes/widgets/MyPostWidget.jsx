@@ -120,9 +120,18 @@ const MyPostWidget = ({ picturePath }) => {
           p="1rem"
         >
           <Dropzone
-            acceptedFiles="image/*,video/*"
+            acceptedFiles="image/*,video/mp4,video/webm,video/ogg"
             multiple={false}
-            onDrop={(acceptedFiles) => setImage(acceptedFiles[0])}
+            onDrop={(acceptedFiles) => {
+              const file = acceptedFiles[0];
+              if (!file) return;
+              const maxMB = 25; // mirror server default
+              if (file.size > maxMB * 1024 * 1024) {
+                alert(`File too large. Max ${maxMB}MB`);
+                return;
+              }
+              setImage(file);
+            }}
           >
             {({ getRootProps, getInputProps }) => (
               <FlexBetween>
@@ -170,21 +179,38 @@ const MyPostWidget = ({ picturePath }) => {
       <Divider sx={{ margin: "1.25rem 0" }} />
 
       <FlexBetween>
-        <FlexBetween gap="0.25rem" onClick={() => setIsImage(!isImage)}>
-          <ImageOutlined sx={{ color: mediumMain }} />
-          <Typography
-            color={mediumMain}
-            sx={{ "&:hover": { cursor: "pointer", color: medium } }}
-          >
+        <FlexBetween
+          gap="0.25rem"
+          onClick={() => setIsImage(!isImage)}
+          sx={{ cursor: 'pointer', '&:hover .media-hover': { color: medium } }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsImage((v) => !v);
+            }
+          }}
+          aria-label="Add media"
+        >
+          <ImageOutlined className="media-hover" sx={{ color: mediumMain, transition: 'color 0.2s ease' }} />
+          <Typography className="media-hover" color={mediumMain} sx={{ transition: 'color 0.2s ease' }}>
             Media
           </Typography>
         </FlexBetween>
 
         {isNonMobileScreens ? (
           <>
-            <FlexBetween gap="0.25rem" onClick={() => setGiphyOpen(true)} sx={{ cursor: 'pointer' }}>
-              <GifBoxOutlined sx={{ color: mediumMain }} />
-              <Typography color={mediumMain}>GIF</Typography>
+            <FlexBetween
+              gap="0.25rem"
+              onClick={() => setGiphyOpen(true)}
+              sx={{
+                cursor: 'pointer',
+                '&:hover .gif-hover': { color: medium },
+              }}
+            >
+              <GifBoxOutlined className="gif-hover" sx={{ color: mediumMain, transition: 'color 0.2s ease' }} />
+              <Typography className="gif-hover" color={mediumMain} sx={{ transition: 'color 0.2s ease' }}>GIF</Typography>
             </FlexBetween>
 
             <FlexBetween gap="0.25rem">
