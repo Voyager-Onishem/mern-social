@@ -19,13 +19,16 @@
     "multer-gridfs-storage": "^5.0.2"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+  "test": "cross-env NODE_ENV=test mocha \"test/**/*.test.js\" --reporter spec --timeout 10000",
+  "test:watch": "cross-env NODE_ENV=test mocha \"test/**/*.test.js\" --reporter min --watch",
+  "start": "nodemon index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+  "cross-env": "^7.0.3",
+  "mocha": "^10.7.3",
     "chai": "^6.0.1",
     "supertest": "^7.1.4"
   }

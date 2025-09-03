@@ -219,7 +219,35 @@ const PostWidget = ({
                   mb: 1,
                 }}
               >
-    {[...currentComments].reverse().map((comment, i) => (
+                {(() => {
+                  // Helper to validate a timestamp-like value
+                  const isValidTs = (val) => {
+                    if (!val) return false;
+                    if (val instanceof Date) return !isNaN(val.getTime());
+                    if (typeof val === 'number') {
+                      const ms = Math.abs(val) < 1e12 ? val * 1000 : val;
+                      return !isNaN(new Date(ms).getTime());
+                    }
+                    if (typeof val === 'string') {
+                      const s = val.trim();
+                      if (/^[a-fA-F0-9]{24}$/.test(s)) {
+                        const d = objectIdToDate(s);
+                        return !!(d && !isNaN(d.getTime()));
+                      }
+                      if (/^\d+$/.test(s)) {
+                        const num = Number(s);
+                        const ms = Math.abs(num) < 1e12 ? num * 1000 : num;
+                        return !isNaN(new Date(ms).getTime());
+                      }
+                      return !isNaN(new Date(s).getTime());
+                    }
+                    return false;
+                  };
+
+                  const postFallbackTs = isValidTs(createdAt) ? createdAt : objectIdToDate(postId);
+                  const getCommentTs = (c) => (isValidTs(c?.createdAt) ? c.createdAt : postFallbackTs);
+
+                  return [...currentComments].reverse().map((comment, i) => (
                   <Box key={i}>
                     <Divider />
                     {/* If comment is an object, pass props; else fallback to string */}
@@ -228,13 +256,14 @@ const PostWidget = ({
                         username={comment.username || "Unknown"}
                         text={comment.text || comment.comment || ""}
                         userPicturePath={comment.userPicturePath}
-                        createdAt={comment.createdAt || comment._id}
+                        createdAt={getCommentTs(comment)}
                       />
                     ) : (
-                      <Comment username="" text={comment} />
+                      <Comment username="" text={comment} createdAt={postFallbackTs} />
                     )}
                   </Box>
-                ))}
+                  ));
+                })()}
                 <Divider />
               </Box>
               <Box display="flex" alignItems="center" gap={1} mt={1}>

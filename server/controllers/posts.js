@@ -14,22 +14,24 @@ export const addComment = async (req, res) => {
   try {
     const { id } = req.params;
     const { userId, text } = req.body;
-    const post = await Post.findById(id);
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: "User not found" });
+
     const commentObj = {
       userId,
       username: `${user.firstName} ${user.lastName}`,
       userPicturePath: user.picturePath,
-  text,
-  createdAt: new Date(),
+      text,
+      createdAt: new Date(),
     };
-    post.comments.push(commentObj);
+
+    // Use $push to append without re-writing the whole comments array
     const updatedPost = await Post.findByIdAndUpdate(
       id,
-      { comments: post.comments },
+      { $push: { comments: commentObj } },
       { new: true }
     );
+    if (!updatedPost) return res.status(404).json({ message: "Post not found" });
     res.status(200).json(updatedPost);
   } catch (err) {
     res.status(404).json({ message: err.message });
