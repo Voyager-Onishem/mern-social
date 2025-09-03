@@ -192,8 +192,23 @@ const PostWidget = ({
                 />
                 <button
                   onClick={handleAddComment}
-                  style={{ padding: "0.5rem 1rem", borderRadius: "1rem", background: primary, color: "white", border: "none" }}
+                  style={{
+                    padding: "0.5rem 1rem",
+                    borderRadius: "1rem",
+                    background: commentText.trim() ? primary : '#bdbdbd',
+                    color: "white",
+                    border: "none",
+                    cursor: commentText.trim() ? 'pointer' : 'not-allowed',
+                    opacity: commentText.trim() ? 1 : 0.6,
+                    transition: 'background 0.2s, opacity 0.2s, cursor 0.2s',
+                  }}
                   disabled={!commentText.trim()}
+                  onMouseOver={e => {
+                    if (commentText.trim()) e.target.style.background = '#1976d2';
+                  }}
+                  onMouseOut={e => {
+                    if (commentText.trim()) e.target.style.background = primary;
+                  }}
                 >
                   Post
                 </button>
