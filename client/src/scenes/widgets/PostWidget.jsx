@@ -159,15 +159,24 @@ const PostWidget = ({
           </>
         );
       })()}
-      {picturePath && (
-        <img
-          width="100%"
-          height="auto"
-          alt="post"
-          style={{ borderRadius: "0.75rem", marginTop: "0.75rem" }}
-          src={`${API_URL}/assets/${picturePath}`}
-        />
-      )}
+      {picturePath && (() => {
+        const lower = String(picturePath).toLowerCase();
+        const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
+        const src = `${API_URL}/assets/${picturePath}`;
+        return isVideo ? (
+          <Box mt={1}>
+            <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
+          </Box>
+        ) : (
+          <img
+            width="100%"
+            height="auto"
+            alt="post"
+            style={{ borderRadius: "0.75rem", marginTop: "0.75rem" }}
+            src={src}
+          />
+        );
+      })()}
       <FlexBetween mt="0.25rem">
         <FlexBetween gap="1rem">
           <FlexBetween gap="0.3rem">

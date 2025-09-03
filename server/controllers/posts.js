@@ -50,7 +50,7 @@ export const createPost = async (req, res) => {
       location: user.location,
       description,
       userPicturePath: user.picturePath,
-      picturePath,
+      picturePath: (req.file && req.file.filename) || picturePath,
       likes: {},
       comments: [],
     });

@@ -38,7 +38,19 @@ const storage = multer.diskStorage({
     cb(null, "public/assets");
   },
   filename: function (req, file, cb) {
-    cb(null, file.originalname);
+    // Create a unique, safe filename to avoid collisions
+    try {
+      const ext = path.extname(file.originalname) || '';
+      const base = path.basename(file.originalname, ext);
+      const safeBase = (base || 'upload')
+        .toString()
+        .replace(/[^a-zA-Z0-9-_]/g, '_')
+        .slice(0, 50);
+      const unique = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      cb(null, `${safeBase}-${unique}${ext}`);
+    } catch (e) {
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    }
   },
 });
 const upload = multer({ storage });

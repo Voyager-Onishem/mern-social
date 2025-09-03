@@ -44,6 +44,7 @@ const MyPostWidget = ({ picturePath }) => {
   const medium = palette.neutral.medium;
 
   const handlePost = async () => {
+  if (!post.trim() && !image) return; // require either text or media
     const formData = new FormData();
     formData.append("userId", _id);
     formData.append("description", post);
@@ -119,7 +120,7 @@ const MyPostWidget = ({ picturePath }) => {
           p="1rem"
         >
           <Dropzone
-            acceptedFiles=".jpg,.jpeg,.png"
+            acceptedFiles="image/*,video/*"
             multiple={false}
             onDrop={(acceptedFiles) => setImage(acceptedFiles[0])}
           >
@@ -134,7 +135,7 @@ const MyPostWidget = ({ picturePath }) => {
                 >
                   <input {...getInputProps()} />
                   {!image ? (
-                    <p>Add Image Here</p>
+                    <p>Add Media Here</p>
                   ) : (
                     <FlexBetween>
                       <Typography>{image.name}</Typography>
@@ -153,6 +154,16 @@ const MyPostWidget = ({ picturePath }) => {
               </FlexBetween>
             )}
           </Dropzone>
+          {/* Inline preview for selected media */}
+          {image && (
+            <Box mt={1}>
+              {image.type?.startsWith('video/') ? (
+                <Box component="video" src={URL.createObjectURL(image)} controls sx={{ width: '100%', maxWidth: '640px', borderRadius: 1 }} />
+              ) : (
+                <Box component="img" src={URL.createObjectURL(image)} alt="Preview" sx={{ maxWidth: '100%', borderRadius: 1 }} />
+              )}
+            </Box>
+          )}
         </Box>
       )}
 
@@ -165,7 +176,7 @@ const MyPostWidget = ({ picturePath }) => {
             color={mediumMain}
             sx={{ "&:hover": { cursor: "pointer", color: medium } }}
           >
-            Image
+            Media
           </Typography>
         </FlexBetween>
 
@@ -193,7 +204,7 @@ const MyPostWidget = ({ picturePath }) => {
         )}
 
         <PostActionButton
-          disabled={!post?.trim()}
+          disabled={!post?.trim() && !image}
           onClick={handlePost}
           label="Post"
         />
