@@ -12,9 +12,13 @@ import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
 import { useState } from "react";
 import { extractFirstGiphyUrl, isGiphyUrl } from "utils/isGiphyUrl";
+import { extractFirstVideo, getEmbedForVideo } from "utils/video";
+import { timeAgo } from "utils/timeAgo";
+import { objectIdToDate } from "utils/objectId";
 import GiphyPicker from "components/GiphyPicker";
 import { useDispatch, useSelector } from "react-redux";
 import { setPost } from "state";
+import PostActionButton from "components/PostActionButton";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -28,6 +32,7 @@ const PostWidget = ({
   userPicturePath,
   likes,
   comments,
+  createdAt,
 }) => {
   const [isComments, setIsComments] = useState(false);
   const [commentText, setCommentText] = useState("");
@@ -116,22 +121,34 @@ const PostWidget = ({
       <Friend
         friendId={postUserId}
         name={name}
-        subtitle={location}
+        subtitle={[location, timeAgo(createdAt || objectIdToDate(postId))].filter(Boolean).join(" · ")}
         userPicturePath={userPicturePath}
       />
       {(() => {
         const rawDesc = typeof description === 'string' ? description : '';
-        const gifUrl = extractFirstGiphyUrl(rawDesc);
-        const textWithoutGif = gifUrl ? rawDesc.replace(gifUrl, '').trim() : rawDesc;
+        const videoMeta = extractFirstVideo(rawDesc);
+        const embed = getEmbedForVideo(videoMeta);
+        const gifUrl = !videoMeta ? extractFirstGiphyUrl(rawDesc) : null;
+        const toRemove = embed ? videoMeta?.url : gifUrl;
+        const textWithoutMedia = toRemove ? rawDesc.replace(toRemove, '').trim() : rawDesc;
         return (
           <>
-            {textWithoutGif && (
+            {textWithoutMedia && (
               <Typography color={main} sx={{ mt: "1rem" }}>
-                {textWithoutGif}
+                {textWithoutMedia}
               </Typography>
             )}
-            {gifUrl && (
-              <Box mt={textWithoutGif ? 1 : 0.5}>
+            {embed && (
+              <Box mt={textWithoutMedia ? 1 : 0.5} sx={{ position: 'relative', width: '100%', maxWidth: '640px', aspectRatio: '16/9' }}>
+                {embed.tag === 'iframe' ? (
+                  <Box component="iframe" src={embed.src} allow={embed.allow} allowFullScreen={embed.allowFullScreen} sx={{ width: '100%', height: '100%', border: 0, borderRadius: 1 }} />
+                ) : (
+                  <Box component="video" src={embed.src} controls sx={{ width: '100%', height: '100%', borderRadius: 1 }} />
+                )}
+              </Box>
+            )}
+            {!embed && gifUrl && (
+              <Box mt={textWithoutMedia ? 1 : 0.5}>
                 <img
                   src={gifUrl}
                   alt="GIF"
@@ -193,7 +210,7 @@ const PostWidget = ({
                   mb: 1,
                 }}
               >
-                {[...currentComments].reverse().map((comment, i) => (
+    {[...currentComments].reverse().map((comment, i) => (
                   <Box key={i}>
                     <Divider />
                     {/* If comment is an object, pass props; else fallback to string */}
@@ -202,6 +219,7 @@ const PostWidget = ({
                         username={comment.username || "Unknown"}
                         text={comment.text || comment.comment || ""}
                         userPicturePath={comment.userPicturePath}
+                        createdAt={comment.createdAt || comment._id}
                       />
                     ) : (
                       <Comment username="" text={comment} />
@@ -222,28 +240,13 @@ const PostWidget = ({
                 <IconButton onClick={() => setGiphyOpen(true)} title="Add GIF">
                   <GifBoxOutlined />
                 </IconButton>
-                <button
+                <PostActionButton
+                  size="small"
                   onClick={handleAddComment}
-                  style={{
-                    padding: "0.5rem 1rem",
-                    borderRadius: "1rem",
-                    background: commentText.trim() ? primary : '#bdbdbd',
-                    color: "white",
-                    border: "none",
-                    cursor: commentText.trim() ? 'pointer' : 'not-allowed',
-                    opacity: commentText.trim() ? 1 : 0.6,
-                    transition: 'background 0.2s, opacity 0.2s, cursor 0.2s',
-                  }}
                   disabled={!commentText.trim()}
-                  onMouseOver={e => {
-                    if (commentText.trim()) e.target.style.background = '#1976d2';
-                  }}
-                  onMouseOut={e => {
-                    if (commentText.trim()) e.target.style.background = primary;
-                  }}
-                >
-                  Post
-                </button>
+                  label="Post"
+                  sx={{ borderRadius: '1rem', padding: '0.35rem 0.9rem' }}
+                />
                 <GiphyPicker open={giphyOpen} onClose={() => setGiphyOpen(false)} onSelect={handleGifSelect} />
               </Box>
             </>

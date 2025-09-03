@@ -1,7 +1,9 @@
 import { Box, Typography, Avatar } from "@mui/material";
 import { extractFirstGiphyUrl } from "utils/isGiphyUrl";
+import { timeAgo } from "utils/timeAgo";
+import { objectIdToDate } from "utils/objectId";
 
-const Comment = ({ username, text, userPicturePath }) => {
+const Comment = ({ username, text, userPicturePath, createdAt }) => {
   const rawText = typeof text === "string" ? text : "";
   const gifUrl = extractFirstGiphyUrl(rawText);
   const remainingText = gifUrl ? rawText.replace(gifUrl, "").trim() : rawText;
@@ -11,9 +13,22 @@ const Comment = ({ username, text, userPicturePath }) => {
         <Avatar src={userPicturePath} alt={username} sx={{ width: 28, height: 28 }} />
       )}
       <Box>
-        <Typography variant="subtitle2" fontWeight="bold">
-          {username}
-        </Typography>
+        <Box display="flex" alignItems="baseline" gap={1}>
+          <Typography variant="subtitle2" fontWeight="bold">
+            {username}
+          </Typography>
+          {(() => {
+            if (!createdAt) return null;
+            const label = timeAgo(
+              typeof createdAt === 'string' && createdAt.length === 24
+                ? objectIdToDate(createdAt)
+                : createdAt
+            );
+            return label ? (
+              <Typography variant="caption" color="text.secondary">{label}</Typography>
+            ) : null;
+          })()}
+        </Box>
         {gifUrl ? (
           <>
             {remainingText && (

@@ -27,7 +27,8 @@ const postSchema = mongoose.Schema(
         userId: String,
         username: String,
         userPicturePath: String,
-        text: String,
+  text: String,
+  createdAt: { type: Date, default: Date.now },
       }
     ],
   },

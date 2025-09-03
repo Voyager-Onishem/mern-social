@@ -13,7 +13,6 @@ import {
   Typography,
   InputBase,
   useTheme,
-  Button,
   IconButton,
   useMediaQuery,
 } from "@mui/material";
@@ -26,6 +25,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { setPosts } from "state";
 import GiphyPicker from "components/GiphyPicker";
 import { extractFirstGiphyUrl, isGiphyUrl } from "utils/isGiphyUrl";
+import { extractFirstVideo, getEmbedForVideo } from "utils/video";
+import PostActionButton from "components/PostActionButton";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -82,16 +83,34 @@ const MyPostWidget = ({ picturePath }) => {
           }}
         />
       </FlexBetween>
-      {/* Simple preview if a GIF URL is present in the post text */}
-      {typeof post === 'string' && isGiphyUrl(post) && (
-        <Box mt={1}>
-          <img
-            src={extractFirstGiphyUrl(post) || undefined}
-            alt="GIF Preview"
-            style={{ maxWidth: 200, borderRadius: 8 }}
-          />
-        </Box>
-      )}
+      {/* Simple preview if a video or GIF URL is present in the post text */}
+      {typeof post === 'string' && (() => {
+        const v = extractFirstVideo(post);
+        if (v) {
+          const embed = getEmbedForVideo(v);
+          return (
+            <Box mt={1} sx={{ position: 'relative', width: '100%', maxWidth: '640px', aspectRatio: '16/9' }}>
+              {embed.tag === 'iframe' ? (
+                <Box component="iframe" src={embed.src} allow={embed.allow} allowFullScreen={embed.allowFullScreen} sx={{ width: '100%', height: '100%', border: 0, borderRadius: 1 }} />
+              ) : (
+                <Box component="video" src={embed.src} controls sx={{ width: '100%', height: '100%', borderRadius: 1 }} />
+              )}
+            </Box>
+          );
+        }
+        if (isGiphyUrl(post)) {
+          return (
+            <Box mt={1}>
+              <img
+                src={extractFirstGiphyUrl(post) || undefined}
+                alt="GIF Preview"
+                style={{ maxWidth: 200, borderRadius: 8 }}
+              />
+            </Box>
+          );
+        }
+        return null;
+      })()}
       {isImage && (
         <Box
           border={`1px solid ${medium}`}
@@ -173,17 +192,11 @@ const MyPostWidget = ({ picturePath }) => {
           </FlexBetween>
         )}
 
-        <Button
-          disabled={!post}
+        <PostActionButton
+          disabled={!post?.trim()}
           onClick={handlePost}
-          sx={{
-            color: palette.background.alt,
-            backgroundColor: palette.primary.main,
-            borderRadius: "3rem",
-          }}
-        >
-          POST
-        </Button>
+          label="Post"
+        />
       </FlexBetween>
 
       <GiphyPicker

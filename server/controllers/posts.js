@@ -21,7 +21,8 @@ export const addComment = async (req, res) => {
       userId,
       username: `${user.firstName} ${user.lastName}`,
       userPicturePath: user.picturePath,
-      text,
+  text,
+  createdAt: new Date(),
     };
     post.comments.push(commentObj);
     const updatedPost = await Post.findByIdAndUpdate(
