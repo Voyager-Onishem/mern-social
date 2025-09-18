@@ -11,24 +11,48 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   const token = useSelector((state) => state.token);
 
   const getPosts = async () => {
-    const response = await fetch(`${API_URL}/posts`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json();
-    dispatch(setPosts({ posts: data }));
+    try {
+      const response = await fetch(`${API_URL}/posts`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = []; }
+      if (!response.ok) {
+        console.warn('Failed to load feed posts:', data);
+        dispatch(setPosts({ posts: Array.isArray(data) ? data : [] }));
+        return;
+      }
+      dispatch(setPosts({ posts: Array.isArray(data) ? data : [] }));
+    } catch (e) {
+      console.warn('Error fetching feed posts:', e);
+      dispatch(setPosts({ posts: [] }));
+    }
   };
 
   const getUserPosts = async () => {
-    const response = await fetch(
-      `${API_URL}/posts/${userId}/posts`,
-      {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
+    try {
+      const response = await fetch(
+        `${API_URL}/posts/${userId}/posts`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = []; }
+      if (!response.ok) {
+        console.warn('Failed to load user posts:', data);
+        dispatch(setPosts({ posts: Array.isArray(data) ? data : [] }));
+        return;
       }
-    );
-    const data = await response.json();
-    dispatch(setPosts({ posts: data }));
+      dispatch(setPosts({ posts: Array.isArray(data) ? data : [] }));
+    } catch (e) {
+      console.warn('Error fetching user posts:', e);
+      dispatch(setPosts({ posts: [] }));
+    }
   };
 
   useEffect(() => {
@@ -50,6 +74,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
           description,
           location,
           picturePath,
+          audioPath,
           userPicturePath,
           likes,
           comments,
@@ -63,6 +88,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
             description={description}
             location={location}
             picturePath={picturePath}
+            audioPath={audioPath}
             userPicturePath={userPicturePath}
             likes={likes}
             comments={comments}

@@ -29,6 +29,7 @@ const PostWidget = ({
   description,
   location,
   picturePath,
+  audioPath,
   userPicturePath,
   likes,
   comments,
@@ -177,6 +178,11 @@ const PostWidget = ({
           />
         );
       })()}
+      {!picturePath && audioPath && (
+        <Box mt={1}>
+          <Box component="audio" src={`${API_URL}/assets/${audioPath}`} controls sx={{ width: '100%' }} />
+        </Box>
+      )}
       <FlexBetween mt="0.25rem">
         <FlexBetween gap="1rem">
           <FlexBetween gap="0.3rem">

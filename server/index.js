@@ -8,6 +8,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
+import { MongoMemoryServer } from "mongodb-memory-server";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import postRoutes from "./routes/posts.js";
@@ -23,6 +24,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
 export const app = express();
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = "dev-secret-change-me";
+  console.warn("JWT_SECRET not set. Using insecure development secret. Set JWT_SECRET in .env for production.");
+}
 app.use(express.json());
 app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
@@ -53,7 +58,7 @@ const storage = multer.diskStorage({
     }
   },
 });
-// Accept common images and web-friendly video formats
+// Accept common images, web-friendly video formats, and audio formats
 const MAX_FILE_SIZE_MB = parseInt(process.env.MAX_FILE_SIZE_MB || "25", 10);
 const upload = multer({
   storage,
@@ -61,9 +66,9 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const mime = file.mimetype || "";
     const allowed = mime.startsWith("image/") ||
-      mime === "video/mp4" ||
-      mime === "video/webm" ||
-      mime === "video/ogg";
+      mime === "video/mp4" || mime === "video/webm" || mime === "video/ogg" ||
+      mime.startsWith("audio/") ||
+      ["audio/webm","audio/ogg","audio/mpeg","audio/wav","audio/mp4"].includes(mime);
     if (!allowed) {
       const err = new Error("INVALID_FILE_TYPE");
       err.code = "INVALID_FILE_TYPE";
@@ -75,7 +80,16 @@ const upload = multer({
 
 /* ROUTES WITH FILES */
 app.post("/auth/register", upload.single("picture"), register);
-app.post("/posts", verifyToken, upload.single("picture"), createPost);
+// Accept either an image/video (picture) or audio file
+app.post(
+  "/posts",
+  verifyToken,
+  upload.fields([
+    { name: "picture", maxCount: 1 },
+    { name: "audio", maxCount: 1 },
+  ]),
+  createPost
+);
 
 /* ROUTES */
 app.use("/auth", authRoutes);
@@ -95,22 +109,43 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
+// Global JSON error handler (prevents HTML error pages)
+app.use((err, req, res, next) => {
+  if (!err) return next();
+  console.error('Unhandled error:', err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({ error: err.message || 'Internal Server Error' });
+});
+
 /* MONGOOSE SETUP */
 const PORT = process.env.PORT || 6001;
-if (process.env.NODE_ENV !== "test") {
-  mongoose
-    .connect(process.env.MONGO_URL, {
+async function startServer() {
+  try {
+    let mongoUrl = process.env.MONGO_URL;
+    if (!mongoUrl) {
+      console.warn("MONGO_URL not set. Starting in-memory MongoDB for development...");
+      const mem = await MongoMemoryServer.create();
+      mongoUrl = mem.getUri();
+      process.on("SIGINT", async () => {
+        await mem.stop();
+        process.exit(0);
+      });
+    }
+    await mongoose.connect(mongoUrl, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-    })
-    .then(() => {
-      app.listen(PORT, () => console.log(`Server Port: ${PORT}`));
+    });
+    app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
+    /* ADD DATA ONE TIME */
+    // User.insertMany(users);
+    // Post.insertMany(posts);
+  } catch (error) {
+    console.error("Mongo/Server startup error:", error);
+  }
+}
 
-      /* ADD DATA ONE TIME */
-      // User.insertMany(users);
-      // Post.insertMany(posts);
-    })
-    .catch((error) => console.log(`${error} did not connect`));
+if (process.env.NODE_ENV !== "test") {
+  startServer();
 }
 
 export default app;

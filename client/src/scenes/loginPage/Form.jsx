@@ -51,6 +51,7 @@ const initialValuesLogin = {
 
 const Form = () => {
   const [pageType, setPageType] = useState("login");
+  const [submitError, setSubmitError] = useState("");
   const { palette } = useTheme();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -59,6 +60,7 @@ const Form = () => {
   const isRegister = pageType === "register";
 
   const register = async (values, onSubmitProps) => {
+    setSubmitError("");
     // this allows us to send form info with image
     const formData = new FormData();
     for (let value in values) {
@@ -66,37 +68,41 @@ const Form = () => {
     }
     formData.append("picturePath", values.picture.name);
 
-    const savedUserResponse = await fetch(
-      `${API_URL}/auth/register`,
-      {
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSubmitError(data?.msg || data?.error || data?.message || "Registration failed.");
+        return;
       }
-    );
-    const savedUser = await savedUserResponse.json();
-    onSubmitProps.resetForm();
-
-    if (savedUser) {
-      setPageType("login");
+      onSubmitProps.resetForm();
+      if (data) setPageType("login");
+    } catch (e) {
+      setSubmitError("Cannot reach server. Please check your connection and try again.");
     }
   };
 
   const login = async (values, onSubmitProps) => {
-    const loggedInResponse = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
-    const loggedIn = await loggedInResponse.json();
-    onSubmitProps.resetForm();
-    if (loggedIn) {
-      dispatch(
-        setLogin({
-          user: loggedIn.user,
-          token: loggedIn.token,
-        })
-      );
+    setSubmitError("");
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSubmitError(data?.msg || data?.error || data?.message || "Login failed.");
+        return;
+      }
+      onSubmitProps.resetForm();
+      dispatch(setLogin({ user: data.user, token: data.token }));
       navigate("/home");
+    } catch (e) {
+      setSubmitError("Cannot reach server. Please start the API and try again.");
     }
   };
 
@@ -121,7 +127,7 @@ const Form = () => {
         setFieldValue,
         resetForm,
       }) => (
-        <form onSubmit={handleSubmit}>
+  <form onSubmit={handleSubmit}>
           <Box
             display="grid"
             gap="30px"
@@ -237,6 +243,11 @@ const Form = () => {
 
           {/* BUTTONS */}
           <Box>
+            {submitError && (
+              <Typography color="error" sx={{ mb: "0.75rem" }}>
+                {submitError}
+              </Typography>
+            )}
             <Button
               fullWidth
               type="submit"

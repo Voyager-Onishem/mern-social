@@ -1,26 +1,10 @@
-import {
-  EditOutlined,
-  DeleteOutlined,
-  AttachFileOutlined,
-  GifBoxOutlined,
-  ImageOutlined,
-  MicOutlined,
-  MoreHorizOutlined,
-} from "@mui/icons-material";
-import {
-  Box,
-  Divider,
-  Typography,
-  InputBase,
-  useTheme,
-  IconButton,
-  useMediaQuery,
-} from "@mui/material";
+import { EditOutlined, DeleteOutlined, GifBoxOutlined, ImageOutlined, MicOutlined, StopCircleOutlined, PlayArrow, Pause, MoreHorizOutlined } from "@mui/icons-material";
+import { Box, Divider, Typography, InputBase, useTheme, IconButton, useMediaQuery } from "@mui/material";
 import FlexBetween from "components/FlexBetween";
 import Dropzone from "react-dropzone";
 import UserImage from "components/UserImage";
 import WidgetWrapper from "components/WidgetWrapper";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setPosts } from "state";
 import GiphyPicker from "components/GiphyPicker";
@@ -36,6 +20,24 @@ const MyPostWidget = ({ picturePath }) => {
   const [image, setImage] = useState(null);
   const [post, setPost] = useState("");
   const [giphyOpen, setGiphyOpen] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  // Audio recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordSecs, setRecordSecs] = useState(0);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioUrl, setAudioUrl] = useState("");
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const audioElRef = useRef(null);
+  const streamRef = useRef(null);
+  const timerRef = useRef(null);
+  const canvasRef = useRef(null);
+  const rafRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const analyserRef = useRef(null);
+  const sourceRef = useRef(null);
+  const maxSeconds = 60;
   const { palette } = useTheme();
   const { _id } = useSelector((state) => state.user);
   const token = useSelector((state) => state.token);
@@ -44,7 +46,8 @@ const MyPostWidget = ({ picturePath }) => {
   const medium = palette.neutral.medium;
 
   const handlePost = async () => {
-  if (!post.trim() && !image) return; // require either text or media
+    setSubmitError("");
+    if (!post.trim() && !image && !audioBlob) return; // require either text or media
     const formData = new FormData();
     formData.append("userId", _id);
     formData.append("description", post);
@@ -52,21 +55,165 @@ const MyPostWidget = ({ picturePath }) => {
       formData.append("picture", image);
       formData.append("picturePath", image.name);
     }
-
-    const response = await fetch(`${API_URL}/posts`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-    const posts = await response.json();
-    dispatch(setPosts({ posts }));
-    setImage(null);
-    setPost("");
+    if (audioBlob) {
+      const fileName = `audio-${Date.now()}.webm`;
+      const audioFile = new File([audioBlob], fileName, { type: audioBlob.type || 'audio/webm' });
+      formData.append("audio", audioFile);
+      formData.append("audioPath", fileName);
+    }
+    try {
+      const response = await fetch(`${API_URL}/posts`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setSubmitError(data?.message || data?.error || "Failed to create post.");
+        return;
+      }
+      const posts = Array.isArray(data) ? data : [];
+      dispatch(setPosts({ posts }));
+      setImage(null);
+      setPost("");
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      setAudioBlob(null);
+      setAudioUrl("");
+    } catch (e) {
+      setSubmitError("Cannot reach server. Please try again.");
+    }
   };
 
   const insertGifIntoPost = (gifUrl) => {
     setPost((prev) => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + gifUrl + ' ');
   };
+
+  // Draw waveform bars using AnalyserNode
+  const drawWave = () => {
+    if (!analyserRef.current || !canvasRef.current) return;
+    const analyser = analyserRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    // Fit to device pixel ratio for crisp lines
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.clientWidth || 300;
+    const cssHeight = 48;
+    canvas.width = Math.max(1, Math.floor(cssWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(cssHeight * dpr));
+    ctx.scale(dpr, dpr);
+    const bufferLength = analyser.fftSize;
+    const dataArray = new Uint8Array(bufferLength);
+    const draw = () => {
+      analyser.getByteTimeDomainData(dataArray);
+      ctx.clearRect(0, 0, cssWidth, cssHeight);
+      ctx.fillStyle = '#eee';
+      ctx.fillRect(0, 0, cssWidth, cssHeight);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#888';
+      ctx.beginPath();
+      const sliceWidth = cssWidth / bufferLength;
+      let x = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0;
+        const y = (v * cssHeight) / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+        x += sliceWidth;
+      }
+      ctx.lineTo(cssWidth, cssHeight / 2);
+      ctx.stroke();
+      rafRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+  };
+
+  const cleanupRecordingGraphics = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    if (audioCtxRef.current) { try { audioCtxRef.current.close(); } catch {} }
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+    sourceRef.current = null;
+  };
+
+  const stopRecording = () => {
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== 'inactive') {
+      try { rec.stop(); } catch {}
+    }
+    setIsRecording(false);
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    // stop mic tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    cleanupRecordingGraphics();
+  };
+
+  const startRecording = async () => {
+    try {
+      // reset any previous audio clip
+      if (audioUrl) { try { URL.revokeObjectURL(audioUrl); } catch {}
+      }
+      setAudioBlob(null);
+      setAudioUrl("");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const rec = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      audioChunksRef.current = [];
+      rec.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      rec.onstop = async () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+      };
+      mediaRecorderRef.current = rec;
+      rec.start(100);
+      setIsRecording(true);
+      setRecordSecs(0);
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setRecordSecs((s) => {
+          if (s + 1 >= maxSeconds) {
+            stopRecording();
+            return maxSeconds;
+          }
+          return s + 1;
+        });
+      }, 1000);
+  // Setup analyser for waveform drawing
+  audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+  analyserRef.current = audioCtxRef.current.createAnalyser();
+  analyserRef.current.fftSize = 1024;
+  sourceRef.current = audioCtxRef.current.createMediaStreamSource(stream);
+  sourceRef.current.connect(analyserRef.current);
+    } catch (e) {
+      alert('Microphone permission is required to record audio.');
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      stopRecording();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Start drawing waveform after the recording UI and analyser are ready
+  useEffect(() => {
+    if (isRecording) {
+      // wait a frame so the canvas mounts
+      const id = requestAnimationFrame(() => drawWave());
+      return () => cancelAnimationFrame(id);
+    } else {
+      // stop drawing when not recording
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRecording]);
 
   return (
     <WidgetWrapper>
@@ -84,6 +231,35 @@ const MyPostWidget = ({ picturePath }) => {
           }}
         />
       </FlexBetween>
+      {/* Recording popup */}
+      {isRecording && (
+        <Box mt={1} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, border: `1px solid ${medium}`, borderRadius: 1, background: palette.neutral.light }}>
+          <canvas ref={canvasRef} width={300} height={48} style={{ width: '100%', height: 48, background: 'transparent' }} />
+          <Typography sx={{ minWidth: 64, textAlign: 'right' }}>
+            {String(Math.floor(recordSecs/60)).padStart(2,'0')}:{String(recordSecs%60).padStart(2,'0')}
+          </Typography>
+        </Box>
+      )}
+      {/* Audio preview block */}
+      {audioBlob && (
+        <Box mt={1} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, border: `1px solid ${medium}`, borderRadius: 1 }}>
+          <IconButton onClick={() => {
+            if (!audioElRef.current) return;
+            if (audioElRef.current.paused) {
+              audioElRef.current.play();
+            } else {
+              audioElRef.current.pause();
+            }
+          }} aria-label="Play/Pause">
+            {isPlayingPreview ? <Pause /> : <PlayArrow />}
+          </IconButton>
+          <Typography sx={{ flex: 1 }}>Voice message</Typography>
+          <IconButton onClick={() => { setAudioBlob(null); if (audioUrl) URL.revokeObjectURL(audioUrl); setAudioUrl(""); }} aria-label="Remove audio">
+            <DeleteOutlined />
+          </IconButton>
+          <audio ref={audioElRef} src={audioUrl || undefined} onPlay={() => setIsPlayingPreview(true)} onPause={() => setIsPlayingPreview(false)} onEnded={() => setIsPlayingPreview(false)} />
+        </Box>
+      )}
       {/* Simple preview if a video or GIF URL is present in the post text */}
       {typeof post === 'string' && (() => {
         const v = extractFirstVideo(post);
@@ -213,14 +389,26 @@ const MyPostWidget = ({ picturePath }) => {
               <Typography className="gif-hover" color={mediumMain} sx={{ transition: 'color 0.2s ease' }}>GIF</Typography>
             </FlexBetween>
 
-            <FlexBetween gap="0.25rem">
-              <AttachFileOutlined sx={{ color: mediumMain }} />
-              <Typography color={mediumMain}>Attachment</Typography>
-            </FlexBetween>
-
-            <FlexBetween gap="0.25rem">
-              <MicOutlined sx={{ color: mediumMain }} />
-              <Typography color={mediumMain}>Audio</Typography>
+            {/* Audio recording control */}
+            <FlexBetween
+              gap="0.25rem"
+              onClick={() => {
+                if (isRecording) {
+                  stopRecording();
+                } else {
+                  startRecording();
+                }
+              }}
+              sx={{ cursor: 'pointer', '&:hover .audio-hover': { color: medium } }}
+            >
+              {isRecording ? (
+                <StopCircleOutlined className="audio-hover" sx={{ color: mediumMain }} />
+              ) : (
+                <MicOutlined className="audio-hover" sx={{ color: mediumMain }} />
+              )}
+              <Typography color={mediumMain}>
+                {isRecording ? `Stop (${String(Math.floor(recordSecs/60)).padStart(2,'0')}:${String(recordSecs%60).padStart(2,'0')})` : 'Audio'}
+              </Typography>
             </FlexBetween>
           </>
         ) : (
@@ -229,8 +417,11 @@ const MyPostWidget = ({ picturePath }) => {
           </FlexBetween>
         )}
 
+        {submitError && (
+          <Typography color="error" sx={{ mr: 2 }}>{submitError}</Typography>
+        )}
         <PostActionButton
-          disabled={!post?.trim() && !image}
+          disabled={!post?.trim() && !image && !audioBlob}
           onClick={handlePost}
           label="Post"
         />

@@ -43,8 +43,20 @@ import User from "../models/User.js";
 /* CREATE */
 export const createPost = async (req, res) => {
   try {
-    const { userId, description, picturePath } = req.body;
+    const { userId, description, picturePath, audioPath: audioPathFromBody } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
     const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    // Multer stores fields as arrays when using upload.fields
+    const uploadedPicture = req.files && req.files.picture && req.files.picture[0];
+    const uploadedAudio = req.files && req.files.audio && req.files.audio[0];
+    const resolvedPicturePath = (uploadedPicture && uploadedPicture.filename) || picturePath;
+    const resolvedAudioPath = (uploadedAudio && uploadedAudio.filename) || audioPathFromBody;
+
     const newPost = new Post({
       userId,
       firstName: user.firstName,
@@ -52,16 +64,17 @@ export const createPost = async (req, res) => {
       location: user.location,
       description,
       userPicturePath: user.picturePath,
-      picturePath: (req.file && req.file.filename) || picturePath,
+      picturePath: resolvedPicturePath,
+      audioPath: resolvedAudioPath,
       likes: {},
       comments: [],
     });
-    await newPost.save();
-
-    const post = await Post.find();
-    res.status(201).json(post);
+  await newPost.save();
+  const post = await Post.find();
+  return res.status(201).json(post);
   } catch (err) {
-    res.status(409).json({ message: err.message });
+  console.error('createPost error:', err);
+  res.status(500).json({ message: err.message || 'Failed to create post' });
   }
 };
 
