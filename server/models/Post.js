@@ -16,8 +16,8 @@ const postSchema = mongoose.Schema(
     },
     location: String,
     description: String,
-    picturePath: String,
-    userPicturePath: String,
+  picturePath: String,
+  userPicturePath: String,
   audioPath: String,
     likes: {
       type: Map,
@@ -28,9 +28,9 @@ const postSchema = mongoose.Schema(
         userId: String,
         username: String,
         userPicturePath: String,
-  text: String,
-  createdAt: { type: Date, default: Date.now },
-      }
+        text: String,
+        createdAt: { type: Date, default: Date.now },
+      },
     ],
   },
   { timestamps: true }

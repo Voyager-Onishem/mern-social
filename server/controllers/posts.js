@@ -51,9 +51,24 @@ export const createPost = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    // Multer stores fields as arrays when using upload.fields
-    const uploadedPicture = req.files && req.files.picture && req.files.picture[0];
-    const uploadedAudio = req.files && req.files.audio && req.files.audio[0];
+    // Support both upload.fields and upload.any()
+    let uploadedPicture = null;
+    let uploadedAudio = null;
+    if (Array.isArray(req.files)) {
+      // Using upload.any(): find first file by mime type
+      for (const f of req.files) {
+        if (!uploadedPicture && f.mimetype && (f.mimetype.startsWith('image/') || /^video\/(mp4|webm|ogg)$/i.test(f.mimetype))) {
+          uploadedPicture = f;
+        }
+        if (!uploadedAudio && f.mimetype && f.mimetype.startsWith('audio/')) {
+          uploadedAudio = f;
+        }
+      }
+    } else if (req.files) {
+      // Using upload.fields: objects with arrays
+      uploadedPicture = req.files.picture && req.files.picture[0];
+      uploadedAudio = req.files.audio && req.files.audio[0];
+    }
     const resolvedPicturePath = (uploadedPicture && uploadedPicture.filename) || picturePath;
     const resolvedAudioPath = (uploadedAudio && uploadedAudio.filename) || audioPathFromBody;
 

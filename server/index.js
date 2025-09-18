@@ -84,10 +84,9 @@ app.post("/auth/register", upload.single("picture"), register);
 app.post(
   "/posts",
   verifyToken,
-  upload.fields([
-    { name: "picture", maxCount: 1 },
-    { name: "audio", maxCount: 1 },
-  ]),
+  // Accept any file field name to be backward-compatible with clients
+  // (we still validate mime types in fileFilter)
+  upload.any(),
   createPost
 );
 
@@ -98,12 +97,15 @@ app.use("/posts", postRoutes);
 
 // Multer/Upload error handler
 app.use((err, req, res, next) => {
-  if (err && (err.code === "LIMIT_FILE_SIZE" || err.code === "INVALID_FILE_TYPE")) {
+  if (err && (err.code === "LIMIT_FILE_SIZE" || err.code === "INVALID_FILE_TYPE" || err.code === 'LIMIT_UNEXPECTED_FILE')) {
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({ message: `File too large. Max ${MAX_FILE_SIZE_MB}MB` });
     }
     if (err.code === "INVALID_FILE_TYPE") {
-      return res.status(400).json({ message: "Invalid file type. Only images and MP4/WebM/OGG videos are allowed." });
+      return res.status(400).json({ message: "Invalid file type. Only images, audio, and MP4/WebM/OGG videos are allowed." });
+    }
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({ message: "Unexpected file field. Try again or update the app." });
     }
   }
   next(err);
@@ -122,12 +124,13 @@ const PORT = process.env.PORT || 6001;
 async function startServer() {
   try {
     let mongoUrl = process.env.MONGO_URL;
-    if (!mongoUrl) {
-      console.warn("MONGO_URL not set. Starting in-memory MongoDB for development...");
-      const mem = await MongoMemoryServer.create();
+    let mem;
+    if (!mongoUrl || process.env.NODE_ENV === 'test') {
+      console.warn("Using in-memory MongoDB (" + (process.env.NODE_ENV || 'dev') + ")...");
+      mem = await MongoMemoryServer.create();
       mongoUrl = mem.getUri();
       process.on("SIGINT", async () => {
-        await mem.stop();
+        try { if (mem) await mem.stop(); } catch {}
         process.exit(0);
       });
     }
@@ -135,7 +138,9 @@ async function startServer() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
+    if (process.env.NODE_ENV !== 'test') {
+      app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
+    }
     /* ADD DATA ONE TIME */
     // User.insertMany(users);
     // Post.insertMany(posts);
@@ -144,8 +149,6 @@ async function startServer() {
   }
 }
 
-if (process.env.NODE_ENV !== "test") {
-  startServer();
-}
+startServer();
 
 export default app;
