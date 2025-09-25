@@ -19,6 +19,7 @@ import GiphyPicker from "components/GiphyPicker";
 import { useDispatch, useSelector } from "react-redux";
 import { setPost } from "state";
 import PostActionButton from "components/PostActionButton";
+import { sharePost, statusToMessage } from "utils/share";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -120,35 +121,9 @@ const PostWidget = ({
   };
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/home#post-${postId}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `${name}'s post`,
-            text: (description && typeof description === 'string' ? description.slice(0, 120) : 'Check out this post'),
-          url: shareUrl,
-        });
-        setShareMessage('Shared');
-      } else if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(shareUrl);
-        setShareMessage('Link copied');
-      } else {
-        // Fallback copy method
-        const el = document.createElement('textarea');
-        el.value = shareUrl;
-        el.style.position = 'fixed';
-        el.style.top = '-1000px';
-        document.body.appendChild(el);
-        el.select();
-        try { document.execCommand('copy'); setShareMessage('Link copied'); } catch { setShareMessage('Cannot copy link'); }
-        document.body.removeChild(el);
-      }
-    } catch (e) {
-      // User canceled or share failed
-      setShareMessage('Share canceled');
-    } finally {
-      setShareOpen(true);
-    }
+    const status = await sharePost({ postId, description, authorName: name });
+    setShareMessage(statusToMessage(status));
+    setShareOpen(true);
   };
 
   return (

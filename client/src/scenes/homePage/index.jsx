@@ -1,6 +1,7 @@
 // No direct API calls in this file, all handled by widgets already updated.
 import { Box, useMediaQuery } from "@mui/material";
 import { useSelector } from "react-redux";
+import { useEffect } from "react";
 import Navbar from "scenes/navbar";
 import UserWidget from "scenes/widgets/UserWidget";
 import MyPostWidget from "scenes/widgets/MyPostWidget";
@@ -11,6 +12,18 @@ import FriendListWidget from "scenes/widgets/FriendListWidget";
 const HomePage = () => {
   const isNonMobileScreens = useMediaQuery("(min-width:1000px)");
   const { _id, picturePath } = useSelector((state) => state.user);
+  // Scroll into a specific post if URL has a hash (#post-<id>)
+  useEffect(() => {
+    if (window.location.hash && window.location.hash.startsWith('#post-')) {
+      const el = document.querySelector(window.location.hash);
+      if (el) {
+        // Smooth scroll after a microtask to ensure layout ready
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
+    }
+  }, []);
 
   return (
     <Box>
