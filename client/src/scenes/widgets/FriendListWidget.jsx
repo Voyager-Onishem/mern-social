@@ -61,6 +61,7 @@ const FriendListWidget = ({ userId }) => {
               name={`${friend.firstName} ${friend.lastName}`}
               subtitle={friend.occupation}
               userPicturePath={friend.picturePath}
+              onFriendToggled={() => { /* Could trigger toast or refresh if needed */ }}
             />
           );
         })}

@@ -1,5 +1,6 @@
 import { EditOutlined, DeleteOutlined, GifBoxOutlined, ImageOutlined, MicOutlined, StopCircleOutlined, PlayArrow, Pause, MoreHorizOutlined } from "@mui/icons-material";
 import { Box, Divider, Typography, InputBase, useTheme, IconButton, useMediaQuery } from "@mui/material";
+import { useNotify } from "components/NotificationProvider";
 import FlexBetween from "components/FlexBetween";
 import Dropzone from "react-dropzone";
 import UserImage from "components/UserImage";
@@ -41,6 +42,7 @@ const MyPostWidget = ({ picturePath }) => {
   const sourceRef = useRef(null);
   const maxSeconds = 60;
   const { palette } = useTheme();
+  const notify = useNotify();
   const { _id } = useSelector((state) => state.user);
   const token = useSelector((state) => state.token);
   const isNonMobileScreens = useMediaQuery("(min-width: 1000px)");
@@ -206,7 +208,7 @@ const MyPostWidget = ({ picturePath }) => {
   sourceRef.current = audioCtxRef.current.createMediaStreamSource(stream);
   sourceRef.current.connect(analyserRef.current);
     } catch (e) {
-      alert('Microphone permission is required to record audio.');
+      notify('Microphone permission is required to record audio.', { severity: 'error' });
     }
   };
 
@@ -317,12 +319,12 @@ const MyPostWidget = ({ picturePath }) => {
             onDrop={(acceptedFiles) => {
               if (!acceptedFiles?.length) return;
               if (audioBlob) {
-                alert('You already have an audio recording. Remove it before adding media if you want a pure audio post, or continue to attach media.');
+                notify('Audio recording present; remove it first if you want only media.', { severity: 'warning' });
               }
               // Enforce max count
               const remainingSlots = MAX_MEDIA_FILES - mediaFiles.length;
               if (remainingSlots <= 0) {
-                alert(`Maximum of ${MAX_MEDIA_FILES} media files reached.`);
+                notify(`Maximum of ${MAX_MEDIA_FILES} media files reached.`, { severity: 'warning' });
                 return;
               }
               const slice = acceptedFiles.slice(0, remainingSlots);
@@ -331,7 +333,7 @@ const MyPostWidget = ({ picturePath }) => {
               const valid = [];
               for (const file of slice) {
                 if (file.size > maxMB * 1024 * 1024) {
-                  alert(`${file.name} too large. Max ${maxMB}MB`);
+                  notify(`${file.name} too large. Max ${maxMB}MB`, { severity: 'warning' });
                   continue;
                 }
                 const preview = URL.createObjectURL(file);

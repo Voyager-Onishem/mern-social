@@ -5,7 +5,7 @@ import {
   ShareOutlined,
   GifBoxOutlined,
 } from "@mui/icons-material";
-import { Box, Divider, IconButton, Typography, useTheme, Snackbar, Tooltip } from "@mui/material";
+import { Box, Divider, IconButton, Typography, useTheme, Snackbar, Tooltip, Alert } from "@mui/material";
 import Comment from "components/Comment";
 import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
@@ -19,6 +19,7 @@ import GiphyPicker from "components/GiphyPicker";
 import { useDispatch, useSelector } from "react-redux";
 import { setPost } from "state";
 import PostActionButton from "components/PostActionButton";
+import Lightbox from "components/Lightbox";
 import { sharePost, statusToMessage } from "utils/share";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -44,6 +45,10 @@ const PostWidget = ({
   const [giphyOpen, setGiphyOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
+  const [errorSnack, setErrorSnack] = useState({ open: false, message: "" });
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   // Editing state
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingText, setEditingText] = useState("");
@@ -67,10 +72,16 @@ const PostWidget = ({
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await response.json();
-      setCurrentComments(data.comments || []);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setErrorSnack({ open: true, message: data?.message || data?.error || 'Failed to load comments' });
+        setCurrentComments([]);
+      } else {
+        setCurrentComments(data.comments || []);
+      }
     } catch (err) {
       setCurrentComments([]);
+      setErrorSnack({ open: true, message: 'Network error loading comments' });
     }
     setLoadingComments(false);
   };
@@ -98,12 +109,16 @@ const PostWidget = ({
           text: commentText,
         }),
       });
-      const updatedPost = await response.json();
+      const updatedPost = await response.json().catch(() => ({}));
+      if (!response.ok || !updatedPost?._id) {
+        setErrorSnack({ open: true, message: updatedPost?.message || 'Failed to add comment' });
+        return;
+      }
       dispatch(setPost({ post: updatedPost }));
       setCurrentComments(updatedPost.comments || []);
       setCommentText("");
     } catch (err) {
-      // Optionally handle error
+      setErrorSnack({ open: true, message: 'Network error adding comment' });
     }
   }
 
@@ -130,14 +145,16 @@ const PostWidget = ({
         },
         body: JSON.stringify({ commentId, userId: loggedInUserId, text: newText })
       });
-      const updatedPost = await response.json();
-      if (updatedPost && updatedPost._id) {
+      const updatedPost = await response.json().catch(() => ({}));
+      if (!response.ok || !updatedPost?._id) {
+        setErrorSnack({ open: true, message: updatedPost?.message || 'Failed to save edit' });
+      } else {
         dispatch(setPost({ post: updatedPost }));
         setCurrentComments(updatedPost.comments || []);
         handleCancelEdit();
       }
     } catch (e) {
-      // silently fail for now
+      setErrorSnack({ open: true, message: 'Network error saving edit' });
     }
     setIsSavingEdit(false);
   }
@@ -154,13 +171,15 @@ const PostWidget = ({
         },
         body: JSON.stringify({ commentId, userId: loggedInUserId })
       });
-      const updatedPost = await response.json();
-      if (updatedPost && updatedPost._id) {
+      const updatedPost = await response.json().catch(() => ({}));
+      if (!response.ok || !updatedPost?._id) {
+        setErrorSnack({ open: true, message: updatedPost?.message || 'Failed to delete comment' });
+      } else {
         dispatch(setPost({ post: updatedPost }));
         setCurrentComments(updatedPost.comments || []);
       }
     } catch (e) {
-      // handle error
+      setErrorSnack({ open: true, message: 'Network error deleting comment' });
     }
     setIsDeletingId(null);
   }
@@ -172,16 +191,24 @@ const PostWidget = ({
 
   // Like handler
   const patchLike = async () => {
-    const response = await fetch(`${API_URL}/posts/${postId}/like`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ userId: loggedInUserId }),
-    });
-    const updatedPost = await response.json();
-    dispatch(setPost({ post: updatedPost }));
+    try {
+      const response = await fetch(`${API_URL}/posts/${postId}/like`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: loggedInUserId }),
+      });
+      const updatedPost = await response.json().catch(() => ({}));
+      if (!response.ok || !updatedPost?._id) {
+        setErrorSnack({ open: true, message: updatedPost?.message || 'Failed to like post' });
+        return;
+      }
+      dispatch(setPost({ post: updatedPost }));
+    } catch (e) {
+      setErrorSnack({ open: true, message: 'Network error liking post' });
+    }
   };
 
   const handleShare = async () => {
@@ -189,6 +216,16 @@ const PostWidget = ({
     setShareMessage(statusToMessage(status));
     setShareOpen(true);
   };
+
+  // Build lightbox items array (images/videos only)
+  const lightboxItems = (() => {
+    const paths = Array.isArray(mediaPaths) && mediaPaths.length > 0 ? mediaPaths : (picturePath ? [picturePath] : []);
+    return paths.map(p => {
+      const lower = String(p).toLowerCase();
+      const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
+      return { src: `${API_URL}/assets/${p}`, type: isVideo ? 'video' : 'image' };
+    });
+  })();
 
   return (
     <WidgetWrapper id={`post-${postId}`} m="2rem 0">
@@ -242,18 +279,12 @@ const PostWidget = ({
             const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
             const src = `${API_URL}/assets/${mp}`;
             return isVideo ? (
-              <Box key={idx}>
+              <Box key={idx} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }} sx={{ cursor: 'pointer' }}>
                 <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
               </Box>
             ) : (
-              <Box key={idx}>
-                <img
-                  width="100%"
-                  height="auto"
-                  alt={`media-${idx}`}
-                  style={{ borderRadius: "0.75rem" }}
-                  src={src}
-                />
+              <Box key={idx} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }} sx={{ cursor: 'pointer' }}>
+                <img width="100%" height="auto" alt={`media-${idx}`} style={{ borderRadius: "0.75rem" }} src={src} />
               </Box>
             );
           })}
@@ -264,17 +295,11 @@ const PostWidget = ({
           const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
           const src = `${API_URL}/assets/${picturePath}`;
           return isVideo ? (
-            <Box mt={1}>
+            <Box mt={1} sx={{ cursor: 'pointer' }} onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
               <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
             </Box>
           ) : (
-            <img
-              width="100%"
-              height="auto"
-              alt="post"
-              style={{ borderRadius: "0.75rem", marginTop: "0.75rem" }}
-              src={src}
-            />
+            <img width="100%" height="auto" alt="post" style={{ borderRadius: "0.75rem", marginTop: "0.75rem", cursor: 'pointer' }} src={src} onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }} />
           );
         })()
       ) : null}
@@ -413,12 +438,18 @@ const PostWidget = ({
           )}
         </Box>
       )}
-      <Snackbar
-        open={shareOpen}
-        autoHideDuration={2500}
-        onClose={() => setShareOpen(false)}
-        message={shareMessage}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      <Snackbar open={shareOpen} autoHideDuration={2500} onClose={() => setShareOpen(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity="info" variant="filled" onClose={() => setShareOpen(false)} sx={{ width: '100%' }}>{shareMessage}</Alert>
+      </Snackbar>
+      <Snackbar open={errorSnack.open} autoHideDuration={3500} onClose={() => setErrorSnack({ open: false, message: '' })} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity="error" variant="filled" onClose={() => setErrorSnack({ open: false, message: '' })} sx={{ width: '100%' }}>{errorSnack.message}</Alert>
+      </Snackbar>
+      <Lightbox
+        open={lightboxOpen}
+        items={lightboxItems}
+        index={lightboxIndex}
+        onIndexChange={(idx) => setLightboxIndex(idx)}
+        onClose={() => setLightboxOpen(false)}
       />
     </WidgetWrapper>
   );

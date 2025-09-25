@@ -8,7 +8,7 @@ import UserImage from "./UserImage";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const Friend = ({ friendId, name, subtitle, userPicturePath }) => {
+const Friend = ({ friendId, name, subtitle, userPicturePath, onFriendToggled }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { _id } = useSelector((state) => state.user);
@@ -38,6 +38,7 @@ const Friend = ({ friendId, name, subtitle, userPicturePath }) => {
     );
     const data = await response.json();
     dispatch(setFriends({ friends: data }));
+    if (onFriendToggled) onFriendToggled(friendId, !!isFriend);
   };
 
   return (

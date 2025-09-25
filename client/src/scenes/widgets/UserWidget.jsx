@@ -4,11 +4,12 @@ import {
   LocationOnOutlined,
   WorkOutlineOutlined,
 } from "@mui/icons-material";
-import { Box, Typography, Divider, useTheme } from "@mui/material";
+import { Box, Typography, Divider, useTheme, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Snackbar, Alert, Tooltip } from "@mui/material";
 import UserImage from "components/UserImage";
 import FlexBetween from "components/FlexBetween";
 import WidgetWrapper from "components/WidgetWrapper";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { setLogin } from "state";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -16,9 +17,16 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 const UserWidget = ({ userId, picturePath }) => {
   const [user, setUser] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [draftLocation, setDraftLocation] = useState("");
+  const [draftOccupation, setDraftOccupation] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [snack, setSnack] = useState({ open: false, msg: '', severity: 'info' });
   const { palette } = useTheme();
   const navigate = useNavigate();
   const token = useSelector((state) => state.token);
+  const loggedUser = useSelector((state) => state.user);
+  const dispatch = useDispatch();
   const dark = palette.neutral.dark;
   const medium = palette.neutral.medium;
   const main = palette.neutral.main;
@@ -35,6 +43,61 @@ const UserWidget = ({ userId, picturePath }) => {
   useEffect(() => {
     getUser();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isOwnProfile = loggedUser?._id === userId;
+
+  const openEdit = () => {
+    if (!user) return;
+    setDraftLocation(user.location || '');
+    setDraftOccupation(user.occupation || '');
+    setEditOpen(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const prevLocal = { location: user.location, occupation: user.occupation };
+    const prevGlobal = isOwnProfile ? { location: loggedUser.location, occupation: loggedUser.occupation } : null;
+    // Optimistic update
+    setUser((prev) => ({ ...prev, location: draftLocation, occupation: draftOccupation }));
+    if (isOwnProfile) {
+      dispatch(setLogin({ user: { ...loggedUser, location: draftLocation, occupation: draftOccupation }, token }));
+    }
+    try {
+      const response = await fetch(`${API_URL}/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ location: draftLocation, occupation: draftOccupation })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        // rollback
+        setUser((prev) => ({ ...prev, ...prevLocal }));
+        if (isOwnProfile && prevGlobal) {
+          dispatch(setLogin({ user: { ...loggedUser, ...prevGlobal }, token }));
+        }
+        setSnack({ open: true, msg: data?.error || data?.message || 'Update failed', severity: 'error' });
+      } else {
+        // ensure normalized data from server (in case server sanitized)
+        setUser((prev) => ({ ...prev, location: data.location, occupation: data.occupation }));
+        if (isOwnProfile) {
+          dispatch(setLogin({ user: { ...loggedUser, location: data.location, occupation: data.occupation }, token }));
+        }
+        setSnack({ open: true, msg: 'Profile updated', severity: 'success' });
+        setEditOpen(false);
+      }
+    } catch (e) {
+      // rollback on network error
+      setUser((prev) => ({ ...prev, ...prevLocal }));
+      if (isOwnProfile && prevGlobal) {
+        dispatch(setLogin({ user: { ...loggedUser, ...prevGlobal }, token }));
+      }
+      setSnack({ open: true, msg: 'Network error updating profile', severity: 'error' });
+    }
+    setSaving(false);
+  };
 
   if (!user) {
     return null;
@@ -77,7 +140,13 @@ const UserWidget = ({ userId, picturePath }) => {
             <Typography color={medium}>{friends.length} friends</Typography>
           </Box>
         </FlexBetween>
-        <ManageAccountsOutlined />
+        {isOwnProfile && (
+          <Tooltip title="Edit profile" arrow>
+            <IconButton size="small" onClick={openEdit} aria-label="Edit profile">
+              <ManageAccountsOutlined />
+            </IconButton>
+          </Tooltip>
+        )}
       </FlexBetween>
 
       <Divider />
@@ -86,11 +155,11 @@ const UserWidget = ({ userId, picturePath }) => {
       <Box p="1rem 0">
         <Box display="flex" alignItems="center" gap="1rem" mb="0.5rem">
           <LocationOnOutlined fontSize="large" sx={{ color: main }} />
-          <Typography color={medium}>{location}</Typography>
+          <Typography color={medium}>{location || (isOwnProfile ? 'Add your location' : '')}</Typography>
         </Box>
         <Box display="flex" alignItems="center" gap="1rem">
           <WorkOutlineOutlined fontSize="large" sx={{ color: main }} />
-          <Typography color={medium}>{occupation}</Typography>
+          <Typography color={medium}>{occupation || (isOwnProfile ? 'Add your occupation' : '')}</Typography>
         </Box>
       </Box>
 
@@ -146,6 +215,38 @@ const UserWidget = ({ userId, picturePath }) => {
           <EditOutlined sx={{ color: main }} />
         </FlexBetween>
       </Box>
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Edit Profile</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            label="Location"
+            value={draftLocation}
+            onChange={(e) => setDraftLocation(e.target.value)}
+            size="small"
+            autoFocus
+          />
+          <TextField
+            label="Occupation"
+            value={draftOccupation}
+            onChange={(e) => setDraftOccupation(e.target.value)}
+            size="small"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving || (!draftLocation.trim() && !draftOccupation.trim())} variant="contained">{saving ? 'Saving...' : 'Save'}</Button>
+        </DialogActions>
+      </Dialog>
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={3000}
+        onClose={() => setSnack({ ...snack, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnack({ ...snack, open: false })} severity={snack.severity} variant="filled" sx={{ width: '100%' }}>
+          {snack.msg}
+        </Alert>
+      </Snackbar>
     </WidgetWrapper>
   );
 };

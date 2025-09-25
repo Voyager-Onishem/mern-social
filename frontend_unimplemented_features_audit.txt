@@ -4,13 +4,22 @@ Frontend Feature Audit - Unimplemented / Non-Functional / Partial Items
 Generated: 2025-09-25
 Scope: Entire React client under `client/src`.
 
-1. Implemented (Baseline)
+1. Implemented (Baseline + New)
 - Auth routing with `RequireAuth` for /home and /profile/:userId.
-- Post creation: text + single image OR video + audio recording (voice message) + GIF URL embedding + external video URL embedding.
-- Feed/profile post rendering with like & comment functionality.
-- GIF picker (`GiphyPicker`) for posts/comments (insertion only).
+- Post creation: text + media (multi-image/video up to 5) + audio recording (voice message) + GIF URL embedding + external video URL embedding.
+- Multi-media persistence via `mediaPaths` with migration fallback (legacy `picturePath`).
 - Audio recording (MediaRecorder + waveform) and playback.
+- Feed/profile post rendering with like & comment functionality.
+- Share action (progressive: Web Share → clipboard → textarea fallback) with Snackbar feedback.
+- Comment editing & deletion (inline edit, delete, edited indicator).
+- GIF rendering inside comments (first GIF auto displayed as <img>).
+- Object URL revocation for media previews.
 - Relative time utilities (timeAgo/objectId) and theme switching logic via Redux `mode` (no visible toggle UI).
+ - Object URL revocation for media previews.
+ - Relative time utilities (timeAgo/objectId) and theme switching logic via Redux `mode` (no visible toggle UI).
+ - Snackbar error handling for like/comment/comment edit/delete & like failures (Quick Win B).
+ - Simple lightbox modal for images/videos with keyboard nav (Quick Win C).
+ - Location & occupation editing via profile dialog (Feature 6).
 
 2. Unimplemented / Non-Functional / Partial Features
 1. Share action
@@ -24,8 +33,8 @@ Scope: Entire React client under `client/src`.
    - GIF URLs can be inserted, but comment renderer does not convert them to <img>; likely displayed as plain text.
 5. Removing detected embeds
    - Auto video/GIF detection in post text has no explicit UI to remove aside from manually deleting URL.
-6. Location editing
-   - Post model/location shown in subtitle but not editable when creating posts.
+6. Location editing (DONE)
+    - Implemented profile dialog (UserWidget) to update location & occupation; persists to backend and Redux.
 7. Profile page depth
    - No avatar/bio edit or explicit friend management actions observed (friend widget code not included in scan).
 8. Robust Giphy error/loading states
@@ -35,8 +44,8 @@ Scope: Entire React client under `client/src`.
    - Waveform canvas lacks accessible alternative.
 10. Audio enhancements
     - No pause/resume, trimming, duration metadata display, or re-record confirmation.
-11. Feedback on actions
-    - Like/comment failures silently ignored (no toast/error state).
+11. Feedback on actions (PARTIAL)
+    - Snackbar error surfaced for like/comment/add/edit/delete and comment load; remaining: global provider & retry/optimistic patterns.
 12. Input validation UX
     - No character count/limit displays; rely on backend acceptance.
 13. Shareable deep links
@@ -66,11 +75,10 @@ Scope: Entire React client under `client/src`.
 25. Pagination/infinite scroll
     - Full feed loads in one request; no lazy load or page slicing.
 
-3. Potential Dead / Underutilized Code
-- Share icon (no handler).
+3. Potential Dead / Underutilized Code (Updated)
 - Mobile overflow `MoreHorizOutlined` without expanded menu actions.
 - GIF/video extraction limited to first occurrence; multiple GIFs ignored.
-- Object URLs for selected images not explicitly revoked on removal (potential memory leak).
+- Legacy `picturePath` usage paths now duplicative of `mediaPaths` (cleanup later).
 
 4. Security / Resilience Gaps (Unaddressed Features)
 - No rate limiting/spam deterrent (client-side throttling).
@@ -78,26 +86,39 @@ Scope: Entire React client under `client/src`.
 - No rich error logging or central error boundary.
 - External embed allowances depend on helper; need whitelist review.
 
-5. Quick Win Recommendations
-A. Remove or implement Share (copy post URL with `navigator.clipboard`).
-B. Render GIF previews in comments (detect & wrap in <img> similar to posts).
-C. Add aria-labels to icon buttons and accessible waveform description.
-D. Revoke image object URLs on removal/unmount.
-E. Basic toast or inline error for network failures (like/comment/post).
+5. Quick Win Recommendations (Updated)
+A. Add missing aria-labels + waveform alt description.
+D. Replace all alert() calls with unified Snackbar/toast. (B & C done)
+E. Add skeleton loaders for posts & comments.
+F. Optimistic comment update & rollback pattern.
+G. Configurable MAX_MEDIA_FILES via env & enforce on server.
+H. Tooltip with edited timestamp for edited comments.
+I. Add explicit remove-embed button when auto-detected media is present.
+J. Introduce ErrorBoundary component.
 
-6. Medium-Term Improvements
-1. Pagination or infinite scroll.
-2. Theme toggle control in navbar.
-3. Centralized embed parsing (avoid repeating extraction logic across components).
-4. Single-post route with shareable URL.
-5. Comment edit/delete (soft delete or inline edit).
+6. Medium-Term Improvements (Revised)
+1. Pagination or infinite scroll & virtualization.
+2. Theme toggle control + persisted preference.
+3. Centralized embed/media parsing & sanitization service.
+4. Dedicated single-post page with SEO-friendly metadata.
+5. Comment edit/delete enhancements (history, soft delete, undo).
+6. Media carousel/lightbox with swipe & keyboard controls.
+7. Upload progress & cancellation.
+8. Rate limiting UI & server sync.
+9. Config-driven UI/media limits.
+10. Enhanced accessibility (focus outlines, skip links, ARIA roles review).
 
-7. Longer-Term Enhancements
-1. Real-time updates via WebSocket or SSE.
-2. Cloud storage abstraction for media (S3/GridFS) instead of local disk.
-3. Rich media gallery & multiple attachments.
-4. Offline/PWA support with caching strategies.
-5. Audio processing (normalize volume, waveform snapshot persisted, transcoding to MP3/AAC fallback).
+7. Longer-Term Enhancements (Expanded)
+1. Real-time updates (WebSocket/SSE) incl. presence & typing.
+2. Cloud media storage + CDN + presigned direct uploads.
+3. Advanced media processing (thumbnails, transcoding pipeline, waveform snapshot persistence).
+4. Offline/PWA (cache strategies, background sync, notifications).
+5. Audio normalization & transcoding (multi-codec packaging).
+6. CSP & security hardening (iframe sandbox, URL allowlist service).
+7. Observability: client perf metrics & error aggregation dashboard.
+8. Analytics-driven feed ranking or personalization.
+9. Internationalization & localization.
+10. Theming presets, user-custom themes & font scaling.
 
 8. No Evidence of Over-Engineering
 - Added audio feature is self-contained.
@@ -111,11 +132,11 @@ E. Basic toast or inline error for network failures (like/comment/post).
 | Comment edit/delete | Missing |
 | Multi-media posts | Missing |
 | GIF in comments display | Partial |
-| Location editing | Missing |
+| Location editing | Implemented |
 | Theme toggle UI | Missing |
 | Pagination | Missing |
 | Real-time updates | Missing |
-| Error feedback (like/comment) | Missing |
+| Error feedback (like/comment) | Partial |
 | Single post deep link | Missing |
 | Accessibility polish | Partial |
 | Test coverage (core UI) | Low |
