@@ -70,21 +70,25 @@ export const updateUserProfile = async (req, res) => {
     if (!req.user || req.user.id !== id) {
       return res.status(403).json({ error: 'Forbidden: cannot edit another user profile' });
     }
-    const allowed = ['location', 'occupation'];
+    const allowed = ['location', 'occupation', 'role', 'twitterUrl', 'linkedinUrl', 'firstName', 'lastName'];
     const updates = {};
     allowed.forEach((f) => {
       if (typeof req.body[f] === 'string') {
         updates[f] = req.body[f].trim();
       }
     });
+    // If multer added a file for picture (e.g., picture), accept it
+    if (req.file && req.file.filename) {
+      updates.picturePath = req.file.filename;
+    }
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No updatable fields provided' });
     }
     const user = await User.findByIdAndUpdate(id, { $set: updates }, { new: true });
     if (!user) return res.status(404).json({ error: 'User not found' });
     // Return a trimmed user object (avoid password hash exposure)
-    const { _id, firstName, lastName, location, occupation, picturePath, friends, viewedProfile, impressions } = user;
-    return res.status(200).json({ _id, firstName, lastName, location, occupation, picturePath, friends, viewedProfile, impressions });
+    const { _id, firstName, lastName, location, occupation, role, twitterUrl, linkedinUrl, picturePath, friends, viewedProfile, impressions } = user;
+    return res.status(200).json({ _id, firstName, lastName, location, occupation, role, twitterUrl, linkedinUrl, picturePath, friends, viewedProfile, impressions });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to update profile', details: err.message });
   }

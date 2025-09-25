@@ -48,8 +48,8 @@ const Friend = ({ friendId, name, subtitle, userPicturePath, onFriendToggled }) 
         <Box
           onClick={() => {
             navigate(`/profile/${friendId}`);
-            navigate(0);
           }}
+          sx={{ cursor: "pointer" }}
         >
           <Typography
             color={main}
