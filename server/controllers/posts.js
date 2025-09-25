@@ -1,3 +1,6 @@
+import Post from "../models/Post.js";
+import User from "../models/User.js";
+
 // GET SINGLE POST
 export const getPost = async (req, res) => {
   try {
@@ -37,8 +40,43 @@ export const addComment = async (req, res) => {
     res.status(404).json({ message: err.message });
   }
 };
-import Post from "../models/Post.js";
-import User from "../models/User.js";
+// EDIT COMMENT
+export const editComment = async (req, res) => {
+  try {
+    const { id } = req.params; // post id
+    const { commentId, userId, text } = req.body;
+  if (!commentId || !userId || !text) return res.status(400).json({ code: 'invalid_request', message: 'commentId, userId and text are required' });
+    const post = await Post.findById(id);
+  if (!post) return res.status(404).json({ code: 'post_not_found', message: 'Post not found' });
+    const comment = post.comments.id(commentId) || post.comments.find(c => String(c._id) === String(commentId));
+  if (!comment) return res.status(404).json({ code: 'comment_not_found', message: 'Comment not found' });
+  if (String(comment.userId) !== String(userId)) return res.status(403).json({ code: 'forbidden', message: 'Cannot edit another user\'s comment' });
+    comment.text = text;
+    comment.editedAt = new Date();
+    await post.save();
+    return res.status(200).json(post);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+// DELETE COMMENT
+export const deleteComment = async (req, res) => {
+  try {
+    const { id } = req.params; // post id
+    const { commentId, userId } = req.body;
+  if (!commentId || !userId) return res.status(400).json({ code: 'invalid_request', message: 'commentId and userId are required' });
+    const post = await Post.findById(id);
+  if (!post) return res.status(404).json({ code: 'post_not_found', message: 'Post not found' });
+    const commentIndex = post.comments.findIndex(c => String(c._id) === String(commentId));
+  if (commentIndex === -1) return res.status(404).json({ code: 'comment_not_found', message: 'Comment not found' });
+  if (String(post.comments[commentIndex].userId) !== String(userId)) return res.status(403).json({ code: 'forbidden', message: 'Cannot delete another user\'s comment' });
+    post.comments.splice(commentIndex, 1);
+    await post.save();
+    return res.status(200).json(post);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
 
 /* CREATE */
 export const createPost = async (req, res) => {

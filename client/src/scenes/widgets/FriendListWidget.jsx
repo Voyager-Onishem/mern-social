@@ -29,6 +29,18 @@ const FriendListWidget = ({ userId }) => {
     getFriends();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Normalize and de-duplicate friends to ensure stable unique keys
+  const processedFriends = Array.isArray(friends)
+    ? friends.filter(Boolean).reduce((acc, f) => {
+        const id = f && (f._id || f.id);
+        if (id && !acc._seen.has(id)) { acc._seen.add(id); acc.items.push(f); }
+        else if (!id) { // fallback include once using a composite temp key
+          acc.items.push(f);
+        }
+        return acc;
+      }, { _seen: new Set(), items: [] }).items
+    : [];
+
   return (
     <WidgetWrapper>
       <Typography
@@ -40,15 +52,18 @@ const FriendListWidget = ({ userId }) => {
         Friend List
       </Typography>
       <Box display="flex" flexDirection="column" gap="1.5rem">
-        {friends.map((friend) => (
-          <Friend
-            key={friend._id}
-            friendId={friend._id}
-            name={`${friend.firstName} ${friend.lastName}`}
-            subtitle={friend.occupation}
-            userPicturePath={friend.picturePath}
-          />
-        ))}
+        {processedFriends.map((friend, idx) => {
+          const keyBase = friend?._id || friend?.id || `${friend?.firstName || 'friend'}-${friend?.lastName || 'x'}`;
+          return (
+            <Friend
+              key={`${keyBase}-${idx}`}
+              friendId={friend._id || friend.id}
+              name={`${friend.firstName} ${friend.lastName}`}
+              subtitle={friend.occupation}
+              userPicturePath={friend.picturePath}
+            />
+          );
+        })}
       </Box>
     </WidgetWrapper>
   );

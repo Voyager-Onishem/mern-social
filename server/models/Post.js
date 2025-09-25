@@ -30,6 +30,7 @@ const postSchema = mongoose.Schema(
         userPicturePath: String,
         text: String,
         createdAt: { type: Date, default: Date.now },
+        editedAt: { type: Date },
       },
     ],
   },

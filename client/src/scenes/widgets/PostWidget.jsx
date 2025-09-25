@@ -43,6 +43,11 @@ const PostWidget = ({
   const [giphyOpen, setGiphyOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
+  // Editing state
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingText, setEditingText] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isDeletingId, setIsDeletingId] = useState(null);
   const dispatch = useDispatch();
   const token = useSelector((state) => state.token);
   const loggedInUserId = useSelector((state) => state.user._id);
@@ -99,6 +104,64 @@ const PostWidget = ({
     } catch (err) {
       // Optionally handle error
     }
+  }
+
+  // Start editing a comment
+  function handleStartEdit(commentId, text) {
+    setEditingCommentId(commentId);
+    setEditingText(text || "");
+  }
+
+  function handleCancelEdit() {
+    setEditingCommentId(null);
+    setEditingText("");
+  }
+
+  async function handleSaveEdit(commentId, newText) {
+    if (!newText.trim()) return;
+    setIsSavingEdit(true);
+    try {
+      const response = await fetch(`${API_URL}/posts/${postId}/comment/edit`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ commentId, userId: loggedInUserId, text: newText })
+      });
+      const updatedPost = await response.json();
+      if (updatedPost && updatedPost._id) {
+        dispatch(setPost({ post: updatedPost }));
+        setCurrentComments(updatedPost.comments || []);
+        handleCancelEdit();
+      }
+    } catch (e) {
+      // silently fail for now
+    }
+    setIsSavingEdit(false);
+  }
+
+  async function handleDeleteComment(commentId) {
+    if (!commentId) return;
+    setIsDeletingId(commentId);
+    try {
+      const response = await fetch(`${API_URL}/posts/${postId}/comment/delete`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ commentId, userId: loggedInUserId })
+      });
+      const updatedPost = await response.json();
+      if (updatedPost && updatedPost._id) {
+        dispatch(setPost({ post: updatedPost }));
+        setCurrentComments(updatedPost.comments || []);
+      }
+    } catch (e) {
+      // handle error
+    }
+    setIsDeletingId(null);
   }
 
   // Insert GIF URL into comment
@@ -264,22 +327,36 @@ const PostWidget = ({
                   const postFallbackTs = isValidTs(createdAt) ? createdAt : objectIdToDate(postId);
                   const getCommentTs = (c) => (isValidTs(c?.createdAt) ? c.createdAt : postFallbackTs);
 
-                  return [...currentComments].reverse().map((comment, i) => (
-                  <Box key={i}>
+                  return [...currentComments].reverse().map((comment, i) => {
+                    const isOwner = typeof comment === 'object' && comment?.userId === loggedInUserId;
+                    const isEditingThis = editingCommentId === String(comment?._id);
+                    return (
+                  <Box key={comment?._id || i} opacity={isDeletingId === comment?._id ? 0.5 : 1}>
                     <Divider />
                     {/* If comment is an object, pass props; else fallback to string */}
                     {typeof comment === 'object' && comment !== null ? (
                       <Comment 
+                        commentId={comment._id}
                         username={comment.username || "Unknown"}
                         text={comment.text || comment.comment || ""}
                         userPicturePath={comment.userPicturePath}
                         createdAt={getCommentTs(comment)}
+                        editedAt={comment.editedAt}
+                        canEdit={isOwner}
+                        isEditing={isEditingThis}
+                        editText={isEditingThis ? editingText : ''}
+                        onStartEdit={handleStartEdit}
+                        onEditTextChange={setEditingText}
+                        onCancelEdit={handleCancelEdit}
+                        onSaveEdit={handleSaveEdit}
+                        onDelete={handleDeleteComment}
                       />
                     ) : (
                       <Comment username="" text={comment} createdAt={postFallbackTs} />
                     )}
                   </Box>
-                  ));
+                    );
+                  });
                 })()}
                 <Divider />
               </Box>
