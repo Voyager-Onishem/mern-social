@@ -5,7 +5,7 @@ import {
   ShareOutlined,
   GifBoxOutlined,
 } from "@mui/icons-material";
-import { Box, Divider, IconButton, Typography, useTheme } from "@mui/material";
+import { Box, Divider, IconButton, Typography, useTheme, Snackbar, Tooltip } from "@mui/material";
 import Comment from "components/Comment";
 import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
@@ -40,6 +40,8 @@ const PostWidget = ({
   const [currentComments, setCurrentComments] = useState(comments || []);
   const [loadingComments, setLoadingComments] = useState(false);
   const [giphyOpen, setGiphyOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareMessage, setShareMessage] = useState("");
   const dispatch = useDispatch();
   const token = useSelector((state) => state.token);
   const loggedInUserId = useSelector((state) => state.user._id);
@@ -117,8 +119,40 @@ const PostWidget = ({
     dispatch(setPost({ post: updatedPost }));
   };
 
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/home#post-${postId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${name}'s post`,
+            text: (description && typeof description === 'string' ? description.slice(0, 120) : 'Check out this post'),
+          url: shareUrl,
+        });
+        setShareMessage('Shared');
+      } else if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareMessage('Link copied');
+      } else {
+        // Fallback copy method
+        const el = document.createElement('textarea');
+        el.value = shareUrl;
+        el.style.position = 'fixed';
+        el.style.top = '-1000px';
+        document.body.appendChild(el);
+        el.select();
+        try { document.execCommand('copy'); setShareMessage('Link copied'); } catch { setShareMessage('Cannot copy link'); }
+        document.body.removeChild(el);
+      }
+    } catch (e) {
+      // User canceled or share failed
+      setShareMessage('Share canceled');
+    } finally {
+      setShareOpen(true);
+    }
+  };
+
   return (
-    <WidgetWrapper m="2rem 0">
+    <WidgetWrapper id={`post-${postId}`} m="2rem 0">
       <Friend
         friendId={postUserId}
         name={name}
@@ -204,9 +238,11 @@ const PostWidget = ({
           </FlexBetween>
         </FlexBetween>
 
-        <IconButton>
-          <ShareOutlined />
-        </IconButton>
+        <Tooltip title="Share" arrow>
+          <IconButton aria-label="Share post" onClick={handleShare}>
+            <ShareOutlined />
+          </IconButton>
+        </Tooltip>
       </FlexBetween>
       {isComments && (
         <Box mt="0.5rem">
@@ -297,6 +333,13 @@ const PostWidget = ({
           )}
         </Box>
       )}
+      <Snackbar
+        open={shareOpen}
+        autoHideDuration={2500}
+        onClose={() => setShareOpen(false)}
+        message={shareMessage}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </WidgetWrapper>
   );
 };

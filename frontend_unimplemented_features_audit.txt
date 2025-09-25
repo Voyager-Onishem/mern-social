@@ -1,0 +1,127 @@
+Frontend Feature Audit - Unimplemented / Non-Functional / Partial Items
+=====================================================================
+
+Generated: 2025-09-25
+Scope: Entire React client under `client/src`.
+
+1. Implemented (Baseline)
+- Auth routing with `RequireAuth` for /home and /profile/:userId.
+- Post creation: text + single image OR video + audio recording (voice message) + GIF URL embedding + external video URL embedding.
+- Feed/profile post rendering with like & comment functionality.
+- GIF picker (`GiphyPicker`) for posts/comments (insertion only).
+- Audio recording (MediaRecorder + waveform) and playback.
+- Relative time utilities (timeAgo/objectId) and theme switching logic via Redux `mode` (no visible toggle UI).
+
+2. Unimplemented / Non-Functional / Partial Features
+1. Share action
+   - UI: `ShareOutlined` icon shown per post.
+   - No onClick handler, no share dialog/copy link logic. Purely decorative.
+2. Comment editing/deletion
+   - Cannot edit or delete existing comments. Only append new.
+3. Multiple media per post
+   - Only one file allowed (image OR video OR audio). No gallery/carousel support.
+4. GIF rendering inside comments
+   - GIF URLs can be inserted, but comment renderer does not convert them to <img>; likely displayed as plain text.
+5. Removing detected embeds
+   - Auto video/GIF detection in post text has no explicit UI to remove aside from manually deleting URL.
+6. Location editing
+   - Post model/location shown in subtitle but not editable when creating posts.
+7. Profile page depth
+   - No avatar/bio edit or explicit friend management actions observed (friend widget code not included in scan).
+8. Robust Giphy error/loading states
+   - Picker lacks visible loading/error fallback if API key missing or network fails.
+9. Accessibility gaps
+   - Icon-only buttons (like/share/GIF/audio) lack aria-labels.
+   - Waveform canvas lacks accessible alternative.
+10. Audio enhancements
+    - No pause/resume, trimming, duration metadata display, or re-record confirmation.
+11. Feedback on actions
+    - Like/comment failures silently ignored (no toast/error state).
+12. Input validation UX
+    - No character count/limit displays; rely on backend acceptance.
+13. Shareable deep links
+    - No dedicated `/post/:id` route; cannot open a single post in isolation.
+14. Draft persistence
+    - Abandoning the composer loses text/media; no local storage.
+15. Media labeling
+    - Audio posts labeled generically ("Voice message"); no duration length surface.
+16. Theme toggle UI
+    - Theme infrastructure present; no visible toggle control.
+17. Friend add/remove
+    - Not verified in scanned code; if absent, friend list is read-only.
+18. Real-time updates
+    - No sockets/polling for incoming posts/likes/comments; manual refresh dependent.
+19. Error boundaries
+    - No <ErrorBoundary>; iframe/media errors could cascade.
+20. Test coverage
+    - Core components (MyPostWidget/PostWidget/GiphyPicker/audio controls) untested. Only utility + trivial App test present.
+21. Service worker/PWA
+    - No offline caching or install prompt despite share icon presence.
+22. Embed sanitization
+    - Direct iframe/video creation from extracted URLs; limited sanitization -> potential XSS vector if helpers insufficient.
+23. Media compatibility
+    - Raw WEBM audio may have Safari compatibility issues (no fallback or transcoding).
+24. Loading states
+    - Minimal ("Loading comments..."). No skeleton loaders.
+25. Pagination/infinite scroll
+    - Full feed loads in one request; no lazy load or page slicing.
+
+3. Potential Dead / Underutilized Code
+- Share icon (no handler).
+- Mobile overflow `MoreHorizOutlined` without expanded menu actions.
+- GIF/video extraction limited to first occurrence; multiple GIFs ignored.
+- Object URLs for selected images not explicitly revoked on removal (potential memory leak).
+
+4. Security / Resilience Gaps (Unaddressed Features)
+- No rate limiting/spam deterrent (client-side throttling).
+- No CSRF defense beyond bearer token (acceptable for SPA, note only).
+- No rich error logging or central error boundary.
+- External embed allowances depend on helper; need whitelist review.
+
+5. Quick Win Recommendations
+A. Remove or implement Share (copy post URL with `navigator.clipboard`).
+B. Render GIF previews in comments (detect & wrap in <img> similar to posts).
+C. Add aria-labels to icon buttons and accessible waveform description.
+D. Revoke image object URLs on removal/unmount.
+E. Basic toast or inline error for network failures (like/comment/post).
+
+6. Medium-Term Improvements
+1. Pagination or infinite scroll.
+2. Theme toggle control in navbar.
+3. Centralized embed parsing (avoid repeating extraction logic across components).
+4. Single-post route with shareable URL.
+5. Comment edit/delete (soft delete or inline edit).
+
+7. Longer-Term Enhancements
+1. Real-time updates via WebSocket or SSE.
+2. Cloud storage abstraction for media (S3/GridFS) instead of local disk.
+3. Rich media gallery & multiple attachments.
+4. Offline/PWA support with caching strategies.
+5. Audio processing (normalize volume, waveform snapshot persisted, transcoding to MP3/AAC fallback).
+
+8. No Evidence of Over-Engineering
+- Added audio feature is self-contained.
+- Mocks in `setupTests.js` are minimal and necessary for environment simulation.
+- No excessive abstraction layers introduced.
+
+9. Summary Table (Condensed)
+| Area | Status |
+|------|--------|
+| Share | Non-functional |
+| Comment edit/delete | Missing |
+| Multi-media posts | Missing |
+| GIF in comments display | Partial |
+| Location editing | Missing |
+| Theme toggle UI | Missing |
+| Pagination | Missing |
+| Real-time updates | Missing |
+| Error feedback (like/comment) | Missing |
+| Single post deep link | Missing |
+| Accessibility polish | Partial |
+| Test coverage (core UI) | Low |
+| Embed sanitization hardening | Needs review |
+
+10. Next Steps (If You Want Action)
+Reply with the letters of items you’d like implemented first (e.g., "A, B, D" for Share, GIF rendering in comments, and object URL cleanup) and I can proceed directly.
+
+-- End of Report --
