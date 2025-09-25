@@ -17,7 +17,8 @@ const API_URL = process.env.REACT_APP_API_URL;
 const MyPostWidget = ({ picturePath }) => {
   const dispatch = useDispatch();
   const [isImage, setIsImage] = useState(false);
-  const [image, setImage] = useState(null);
+  // Support multiple media files (images or videos)
+  const [mediaFiles, setMediaFiles] = useState([]); // Array<File>
   const [post, setPost] = useState("");
   const [giphyOpen, setGiphyOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -47,13 +48,21 @@ const MyPostWidget = ({ picturePath }) => {
 
   const handlePost = async () => {
     setSubmitError("");
-    if (!post.trim() && !image && !audioBlob) return; // require either text or media
+    if (!post.trim() && mediaFiles.length === 0 && !audioBlob) return; // require either text or media
     const formData = new FormData();
     formData.append("userId", _id);
     formData.append("description", post);
-    if (image) {
-      formData.append("picture", image);
-      formData.append("picturePath", image.name);
+    if (mediaFiles.length > 0) {
+      // For backward compatibility with current backend (single picturePath/audioPath fields),
+      // we will send the first file in legacy fields and all files as an array 'media[]'
+      mediaFiles.forEach((file, idx) => {
+        formData.append('media', file, file.name);
+        if (idx === 0) {
+          // Use original field names so existing server still attaches one
+          formData.append('picture', file); // server picks first image/video via mime check
+          formData.append('picturePath', file.name);
+        }
+      });
     }
     if (audioBlob) {
       const fileName = `audio-${Date.now()}.webm`;
@@ -74,7 +83,13 @@ const MyPostWidget = ({ picturePath }) => {
       }
       const posts = Array.isArray(data) ? data : [];
       dispatch(setPosts({ posts }));
-      setImage(null);
+      // Revoke generated object URLs for previews
+      mediaFiles.forEach(f => {
+        if (f.__previewUrl) {
+          try { URL.revokeObjectURL(f.__previewUrl); } catch {}
+        }
+      });
+      setMediaFiles([]);
       setPost("");
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       setAudioBlob(null);
@@ -297,41 +312,48 @@ const MyPostWidget = ({ picturePath }) => {
         >
           <Dropzone
             acceptedFiles="image/*,video/mp4,video/webm,video/ogg"
-            multiple={false}
+            multiple
             onDrop={(acceptedFiles) => {
-              const file = acceptedFiles[0];
-              if (!file) return;
-              const maxMB = 25; // mirror server default
-              if (file.size > maxMB * 1024 * 1024) {
-                alert(`File too large. Max ${maxMB}MB`);
-                return;
+              if (!acceptedFiles?.length) return;
+              // Prevent mixing audio & media (audio handled separately)
+              const maxMB = 25;
+              const valid = [];
+              for (const file of acceptedFiles) {
+                if (file.size > maxMB * 1024 * 1024) {
+                  alert(`${file.name} too large. Max ${maxMB}MB`);
+                  continue;
+                }
+                const preview = URL.createObjectURL(file);
+                file.__previewUrl = preview; // attach for later revocation
+                valid.push(file);
               }
-              setImage(file);
+              setMediaFiles(prev => [...prev, ...valid]);
             }}
           >
             {({ getRootProps, getInputProps }) => (
-              <FlexBetween>
+              <FlexBetween alignItems="flex-start" gap={1}>
                 <Box
                   {...getRootProps()}
                   border={`2px dashed ${palette.primary.main}`}
                   p="1rem"
                   width="100%"
-                  sx={{ "&:hover": { cursor: "pointer" } }}
+                  sx={{ "&:hover": { cursor: "pointer" }, minHeight: '4rem' }}
                 >
                   <input {...getInputProps()} />
-                  {!image ? (
-                    <p>Add Media Here</p>
+                  {mediaFiles.length === 0 ? (
+                    <p>Add Media (images/videos) - multiple allowed</p>
                   ) : (
-                    <FlexBetween>
-                      <Typography>{image.name}</Typography>
-                      <EditOutlined />
-                    </FlexBetween>
+                    <Typography>{mediaFiles.length} file{mediaFiles.length > 1 ? 's' : ''} selected</Typography>
                   )}
                 </Box>
-                {image && (
+                {mediaFiles.length > 0 && (
                   <IconButton
-                    onClick={() => setImage(null)}
+                    onClick={() => {
+                      mediaFiles.forEach(f => { if (f.__previewUrl) { try { URL.revokeObjectURL(f.__previewUrl); } catch {} } });
+                      setMediaFiles([]);
+                    }}
                     sx={{ width: "15%" }}
+                    aria-label="Clear media"
                   >
                     <DeleteOutlined />
                   </IconButton>
@@ -339,14 +361,38 @@ const MyPostWidget = ({ picturePath }) => {
               </FlexBetween>
             )}
           </Dropzone>
-          {/* Inline preview for selected media */}
-          {image && (
-            <Box mt={1}>
-              {image.type?.startsWith('video/') ? (
-                <Box component="video" src={URL.createObjectURL(image)} controls sx={{ width: '100%', maxWidth: '640px', borderRadius: 1 }} />
-              ) : (
-                <Box component="img" src={URL.createObjectURL(image)} alt="Preview" sx={{ maxWidth: '100%', borderRadius: 1 }} />
-              )}
+          {/* Inline previews grid */}
+          {mediaFiles.length > 0 && (
+            <Box mt={1} sx={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))' }}>
+              {mediaFiles.map((file, idx) => {
+                const isVideo = file.type?.startsWith('video/');
+                const url = file.__previewUrl || URL.createObjectURL(file);
+                if (!file.__previewUrl) file.__previewUrl = url;
+                return (
+                  <Box key={idx} sx={{ position: 'relative', border: '1px solid #ccc', borderRadius: 1, overflow: 'hidden' }}>
+                    {isVideo ? (
+                      <Box component="video" src={url} controls sx={{ width: '100%', height: 100, objectFit: 'cover' }} />
+                    ) : (
+                      <Box component="img" src={url} alt={file.name} sx={{ width: '100%', height: 100, objectFit: 'cover' }} />
+                    )}
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setMediaFiles(prev => {
+                          const copy = [...prev];
+                          const [removed] = copy.splice(idx, 1);
+                          if (removed?.__previewUrl) { try { URL.revokeObjectURL(removed.__previewUrl); } catch {} }
+                          return copy;
+                        });
+                      }}
+                      sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}
+                      aria-label="Remove file"
+                    >
+                      <DeleteOutlined fontSize="small" />
+                    </IconButton>
+                  </Box>
+                );
+              })}
             </Box>
           )}
         </Box>
@@ -421,7 +467,7 @@ const MyPostWidget = ({ picturePath }) => {
           <Typography color="error" sx={{ mr: 2 }}>{submitError}</Typography>
         )}
         <PostActionButton
-          disabled={!post?.trim() && !image && !audioBlob}
+          disabled={!post?.trim() && mediaFiles.length === 0 && !audioBlob}
           onClick={handlePost}
           label="Post"
         />

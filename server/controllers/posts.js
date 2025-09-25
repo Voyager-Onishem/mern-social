@@ -89,23 +89,28 @@ export const createPost = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    // Support both upload.fields and upload.any()
-    let uploadedPicture = null;
+    // Gather media files (images/videos) - keep first for backward compatibility
+    let uploadedPicture = null; // first image/video
     let uploadedAudio = null;
+    let mediaList = [];
     if (Array.isArray(req.files)) {
-      // Using upload.any(): find first file by mime type
       for (const f of req.files) {
-        if (!uploadedPicture && f.mimetype && (f.mimetype.startsWith('image/') || /^video\/(mp4|webm|ogg)$/i.test(f.mimetype))) {
-          uploadedPicture = f;
-        }
-        if (!uploadedAudio && f.mimetype && f.mimetype.startsWith('audio/')) {
+        const mime = f.mimetype || '';
+        if (mime.startsWith('audio/') && !uploadedAudio) {
           uploadedAudio = f;
+        } else if ((mime.startsWith('image/') || /^video\/(mp4|webm|ogg)$/i.test(mime))) {
+          mediaList.push(f);
+          if (!uploadedPicture) uploadedPicture = f;
         }
       }
     } else if (req.files) {
-      // Using upload.fields: objects with arrays
-      uploadedPicture = req.files.picture && req.files.picture[0];
-      uploadedAudio = req.files.audio && req.files.audio[0];
+      const picArr = req.files.picture || req.files.media || [];
+      const audioArr = req.files.audio || [];
+      if (Array.isArray(picArr)) {
+        mediaList = picArr;
+        uploadedPicture = picArr[0];
+      }
+      if (Array.isArray(audioArr)) uploadedAudio = audioArr[0];
     }
     const resolvedPicturePath = (uploadedPicture && uploadedPicture.filename) || picturePath;
     const resolvedAudioPath = (uploadedAudio && uploadedAudio.filename) || audioPathFromBody;
@@ -117,7 +122,9 @@ export const createPost = async (req, res) => {
       location: user.location,
       description,
       userPicturePath: user.picturePath,
-      picturePath: resolvedPicturePath,
+  picturePath: resolvedPicturePath,
+  // For future extension: store array of media paths if needed (not in schema yet)
+  // mediaPaths: mediaList.map(m => m.filename),
       audioPath: resolvedAudioPath,
       likes: {},
       comments: [],
