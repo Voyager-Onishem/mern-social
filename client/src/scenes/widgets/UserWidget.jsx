@@ -134,6 +134,25 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
     friends,
   } = user;
 
+  // helpers for social link formatting (lightweight, inline – avoids extra deps)
+  const ensureHttps = (url) => {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    return /^(https?:)?\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+  const displayHost = (url) => {
+    if (!url) return '';
+    try {
+      const u = new URL(ensureHttps(url));
+      return u.hostname.replace(/^www\./i, '') + (u.pathname && u.pathname !== '/' ? u.pathname : '');
+    } catch {
+      return url;
+    }
+  };
+  const twUrl = user.twitterUrl || '';
+  const liUrl = user.linkedinUrl || '';
+
   return (
     <WidgetWrapper>
       {/* FIRST ROW */}
@@ -210,36 +229,66 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
 
       <Divider />
 
-      {/* FOURTH ROW */}
+      {/* FOURTH ROW - SOCIAL PROFILES */}
       <Box p="1rem 0">
-        <Typography fontSize="1rem" color={main} fontWeight="500" mb="1rem">
-          Social Profiles
-        </Typography>
+        <Typography fontSize="1rem" color={main} fontWeight="500" mb="1rem">Social Profiles</Typography>
 
-        <FlexBetween gap="1rem" mb="0.5rem">
-          <FlexBetween gap="1rem">
-            <img src="../assets/twitter.png" alt="twitter" />
+        <FlexBetween gap="1rem" mb="0.75rem">
+          <FlexBetween gap="0.75rem">
+            <img src="../assets/twitter.png" alt="Twitter" width={32} height={32} style={{ objectFit: 'contain' }} />
             <Box>
-              <Typography color={main} fontWeight="500">
-                Twitter
-              </Typography>
-              <Typography color={medium}>Social Network</Typography>
+              <Typography color={main} fontWeight="500">Twitter</Typography>
+              {twUrl ? (
+                <Typography component="a"
+                  href={ensureHttps(twUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color={palette.primary.main}
+                  sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' }, wordBreak: 'break-all' }}
+                >
+                  {displayHost(twUrl)}
+                </Typography>
+              ) : (
+                <Typography color={medium} fontSize="0.8rem">{isOwnProfile ? 'Add your Twitter link' : 'Not provided'}</Typography>
+              )}
             </Box>
           </FlexBetween>
-          <EditOutlined sx={{ color: main }} />
+          {isOwnProfile && (
+            <Tooltip title={twUrl ? 'Edit Twitter link' : 'Add Twitter link'} arrow>
+              <IconButton size="small" onClick={openEdit} aria-label="Edit Twitter profile link">
+                <EditOutlined sx={{ color: main }} />
+              </IconButton>
+            </Tooltip>
+          )}
         </FlexBetween>
 
         <FlexBetween gap="1rem">
-          <FlexBetween gap="1rem">
-            <img src="../assets/linkedin.png" alt="linkedin" />
+          <FlexBetween gap="0.75rem">
+            <img src="../assets/linkedin.png" alt="LinkedIn" width={32} height={32} style={{ objectFit: 'contain' }} />
             <Box>
-              <Typography color={main} fontWeight="500">
-                Linkedin
-              </Typography>
-              <Typography color={medium}>Network Platform</Typography>
+              <Typography color={main} fontWeight="500">LinkedIn</Typography>
+              {liUrl ? (
+                <Typography component="a"
+                  href={ensureHttps(liUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color={palette.primary.main}
+                  sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' }, wordBreak: 'break-all' }}
+                >
+                  {displayHost(liUrl)}
+                </Typography>
+              ) : (
+                <Typography color={medium} fontSize="0.8rem">{isOwnProfile ? 'Add your LinkedIn link' : 'Not provided'}</Typography>
+              )}
             </Box>
           </FlexBetween>
-          <EditOutlined sx={{ color: main }} />
+          {isOwnProfile && (
+            <Tooltip title={liUrl ? 'Edit LinkedIn link' : 'Add LinkedIn link'} arrow>
+              <IconButton size="small" onClick={openEdit} aria-label="Edit LinkedIn profile link">
+                <EditOutlined sx={{ color: main }} />
+              </IconButton>
+            </Tooltip>
+          )}
         </FlexBetween>
       </Box>
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="xs">
