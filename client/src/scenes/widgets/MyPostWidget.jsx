@@ -19,6 +19,7 @@ const MyPostWidget = ({ picturePath }) => {
   const [isImage, setIsImage] = useState(false);
   // Support multiple media files (images or videos)
   const [mediaFiles, setMediaFiles] = useState([]); // Array<File>
+  const MAX_MEDIA_FILES = 5;
   const [post, setPost] = useState("");
   const [giphyOpen, setGiphyOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -315,10 +316,20 @@ const MyPostWidget = ({ picturePath }) => {
             multiple
             onDrop={(acceptedFiles) => {
               if (!acceptedFiles?.length) return;
+              if (audioBlob) {
+                alert('You already have an audio recording. Remove it before adding media if you want a pure audio post, or continue to attach media.');
+              }
+              // Enforce max count
+              const remainingSlots = MAX_MEDIA_FILES - mediaFiles.length;
+              if (remainingSlots <= 0) {
+                alert(`Maximum of ${MAX_MEDIA_FILES} media files reached.`);
+                return;
+              }
+              const slice = acceptedFiles.slice(0, remainingSlots);
               // Prevent mixing audio & media (audio handled separately)
               const maxMB = 25;
               const valid = [];
-              for (const file of acceptedFiles) {
+              for (const file of slice) {
                 if (file.size > maxMB * 1024 * 1024) {
                   alert(`${file.name} too large. Max ${maxMB}MB`);
                   continue;
@@ -341,9 +352,9 @@ const MyPostWidget = ({ picturePath }) => {
                 >
                   <input {...getInputProps()} />
                   {mediaFiles.length === 0 ? (
-                    <p>Add Media (images/videos) - multiple allowed</p>
+                    <p>Add Media (images/videos) - up to {MAX_MEDIA_FILES}</p>
                   ) : (
-                    <Typography>{mediaFiles.length} file{mediaFiles.length > 1 ? 's' : ''} selected</Typography>
+                    <Typography>{mediaFiles.length}/{MAX_MEDIA_FILES} file{mediaFiles.length > 1 ? 's' : ''} selected</Typography>
                   )}
                 </Box>
                 {mediaFiles.length > 0 && (

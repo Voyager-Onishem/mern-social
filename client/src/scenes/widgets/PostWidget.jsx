@@ -31,6 +31,7 @@ const PostWidget = ({
   location,
   picturePath,
   audioPath,
+  mediaPaths = [],
   userPicturePath,
   likes,
   comments,
@@ -232,25 +233,52 @@ const PostWidget = ({
           </>
         );
       })()}
-      {picturePath && (() => {
-        const lower = String(picturePath).toLowerCase();
-        const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
-        const src = `${API_URL}/assets/${picturePath}`;
-        return isVideo ? (
-          <Box mt={1}>
-            <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
-          </Box>
-        ) : (
-          <img
-            width="100%"
-            height="auto"
-            alt="post"
-            style={{ borderRadius: "0.75rem", marginTop: "0.75rem" }}
-            src={src}
-          />
-        );
-      })()}
-      {!picturePath && audioPath && (
+      {/* Render mediaPaths if any; else fall back to legacy picturePath */}
+      {Array.isArray(mediaPaths) && mediaPaths.length > 0 ? (
+        <Box mt={1} display="flex" flexDirection="column" gap={1}>
+          {mediaPaths.map((mp, idx) => {
+            if (!mp) return null;
+            const lower = String(mp).toLowerCase();
+            const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
+            const src = `${API_URL}/assets/${mp}`;
+            return isVideo ? (
+              <Box key={idx}>
+                <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
+              </Box>
+            ) : (
+              <Box key={idx}>
+                <img
+                  width="100%"
+                  height="auto"
+                  alt={`media-${idx}`}
+                  style={{ borderRadius: "0.75rem" }}
+                  src={src}
+                />
+              </Box>
+            );
+          })}
+        </Box>
+      ) : picturePath ? (
+        (() => {
+          const lower = String(picturePath).toLowerCase();
+          const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
+          const src = `${API_URL}/assets/${picturePath}`;
+          return isVideo ? (
+            <Box mt={1}>
+              <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
+            </Box>
+          ) : (
+            <img
+              width="100%"
+              height="auto"
+              alt="post"
+              style={{ borderRadius: "0.75rem", marginTop: "0.75rem" }}
+              src={src}
+            />
+          );
+        })()
+      ) : null}
+      {!picturePath && (!mediaPaths || mediaPaths.length === 0) && audioPath && (
         <Box mt={1}>
           <Box component="audio" src={`${API_URL}/assets/${audioPath}`} controls sx={{ width: '100%' }} />
         </Box>

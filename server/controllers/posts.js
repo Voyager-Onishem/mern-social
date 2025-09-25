@@ -7,7 +7,11 @@ export const getPost = async (req, res) => {
     const { id } = req.params;
     const post = await Post.findById(id);
     if (!post) return res.status(404).json({ message: "Post not found" });
-    res.status(200).json(post);
+    const serialized = {
+      ...post.toObject(),
+      mediaPaths: (post.mediaPaths && post.mediaPaths.length) ? post.mediaPaths : (post.picturePath ? [post.picturePath] : []),
+    };
+    res.status(200).json(serialized);
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
@@ -122,16 +126,19 @@ export const createPost = async (req, res) => {
       location: user.location,
       description,
       userPicturePath: user.picturePath,
-  picturePath: resolvedPicturePath,
-  // For future extension: store array of media paths if needed (not in schema yet)
-  // mediaPaths: mediaList.map(m => m.filename),
+      picturePath: resolvedPicturePath,
       audioPath: resolvedAudioPath,
+      mediaPaths: mediaList.map(m => m.filename),
       likes: {},
       comments: [],
     });
-  await newPost.save();
-  const post = await Post.find();
-  return res.status(201).json(post);
+    await newPost.save();
+    const posts = await Post.find();
+    const serialized = posts.map(p => ({
+      ...p.toObject(),
+      mediaPaths: (p.mediaPaths && p.mediaPaths.length) ? p.mediaPaths : (p.picturePath ? [p.picturePath] : []),
+    }));
+    return res.status(201).json(serialized);
   } catch (err) {
   console.error('createPost error:', err);
   res.status(500).json({ message: err.message || 'Failed to create post' });
@@ -142,7 +149,10 @@ export const createPost = async (req, res) => {
 export const getFeedPosts = async (req, res) => {
   try {
     const post = await Post.find();
-    res.status(200).json(post);
+    res.status(200).json(post.map(p => ({
+      ...p.toObject(),
+      mediaPaths: (p.mediaPaths && p.mediaPaths.length) ? p.mediaPaths : (p.picturePath ? [p.picturePath] : []),
+    })));
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
@@ -152,7 +162,10 @@ export const getUserPosts = async (req, res) => {
   try {
     const { userId } = req.params;
     const post = await Post.find({ userId });
-    res.status(200).json(post);
+    res.status(200).json(post.map(p => ({
+      ...p.toObject(),
+      mediaPaths: (p.mediaPaths && p.mediaPaths.length) ? p.mediaPaths : (p.picturePath ? [p.picturePath] : []),
+    })));
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
@@ -178,7 +191,10 @@ export const likePost = async (req, res) => {
       { new: true }
     );
 
-    res.status(200).json(updatedPost);
+    res.status(200).json({
+      ...updatedPost.toObject(),
+      mediaPaths: (updatedPost.mediaPaths && updatedPost.mediaPaths.length) ? updatedPost.mediaPaths : (updatedPost.picturePath ? [updatedPost.picturePath] : []),
+    });
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
