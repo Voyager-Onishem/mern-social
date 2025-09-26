@@ -521,7 +521,7 @@ const MyPostWidget = ({ picturePath }) => {
               <Typography className="gif-hover" color={mediumMain} sx={{ transition: 'color 0.2s ease' }}>GIF</Typography>
             </FlexBetween>
 
-            {/* Audio recording control */}
+            {/** Audio recording control disabled per request; leaving code in place commented for potential future re-enable.
             <FlexBetween
               gap="0.25rem"
               onClick={() => {
@@ -542,6 +542,7 @@ const MyPostWidget = ({ picturePath }) => {
                 {isRecording ? `Stop (${String(Math.floor(recordSecs/60)).padStart(2,'0')}:${String(recordSecs%60).padStart(2,'0')})` : 'Audio'}
               </Typography>
             </FlexBetween>
+            */}
           </>
         ) : (
           <FlexBetween gap="0.25rem">

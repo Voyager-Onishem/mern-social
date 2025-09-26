@@ -199,3 +199,14 @@ export const likePost = async (req, res) => {
     res.status(status).json({ message: err.message || 'Failed to like post' });
   }
 };
+
+// DANGEROUS: Delete all posts that contain an audioPath field. Intended one-off maintenance endpoint.
+// In production this should be protected (e.g., admin role). For now it is token-protected only.
+export const purgeAudioPosts = async (req, res) => {
+  try {
+    const result = await Post.deleteMany({ audioPath: { $exists: true, $ne: null, $ne: '' } });
+    return res.status(200).json({ deletedCount: result.deletedCount });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || 'Failed to purge audio posts' });
+  }
+};
