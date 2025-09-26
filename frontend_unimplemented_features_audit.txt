@@ -22,12 +22,12 @@ Scope: Entire React client under `client/src`.
  - Location & occupation editing via profile dialog (Feature 6).
 
 2. Unimplemented / Non-Functional / Partial Features
-1. Share action
+1. Share action (PARTIAL)
    - UI: `ShareOutlined` icon shown per post.
    - No onClick handler, no share dialog/copy link logic. Purely decorative.
-2. Comment editing/deletion
+2. Comment editing/deletion (DONE)
    - Cannot edit or delete existing comments. Only append new.
-3. Multiple media per post
+3. Multiple media per post (DONE)
    - Only one file allowed (image OR video OR audio). No gallery/carousel support.
 4. GIF rendering inside comments
    - GIF URLs can be inserted, but comment renderer does not convert them to <img>; likely displayed as plain text.
@@ -35,11 +35,11 @@ Scope: Entire React client under `client/src`.
    - Auto video/GIF detection in post text has no explicit UI to remove aside from manually deleting URL.
 6. Location editing (DONE)
     - Implemented profile dialog (UserWidget) to update location & occupation; persists to backend and Redux.
-7. Profile page depth
+7. Profile page depth (PARTIAL)
    - No avatar/bio edit or explicit friend management actions observed (friend widget code not included in scan).
-8. Robust Giphy error/loading states
-   - Picker lacks visible loading/error fallback if API key missing or network fails.
-9. Accessibility gaps
+8. Robust Giphy error/loading states (IMPLEMENTED)
+    - Added: debounced search w/ abort, skeleton loaders, explicit error messaging + retry, graceful empty state, manual reload, keyboard '/' focus shortcut, lazy image loading & hover affordances. Still could add rate limiting/backoff (future).
+9. Accessibility gaps (NOT A PRIORITY)
    - Icon-only buttons (like/share/GIF/audio) lack aria-labels.
    - Waveform canvas lacks accessible alternative.
 10. Audio enhancements
@@ -77,6 +77,87 @@ Scope: Entire React client under `client/src`.
     - Minimal ("Loading comments..."). No skeleton loaders.
 25. Pagination/infinite scroll
     - Full feed loads in one request; no lazy load or page slicing.
+
+26. Engagement metrics: Real profile views & post impressions (NOT IMPLEMENTED)
+     Current state:
+        - Fields `viewedProfile` and `impressions` on User/Post are placeholder/randomized (seed) values, not tied to real user behavior.
+     Goal:
+        - Accurately track: (a) unique (and total) profile views per user, (b) unique (and total) impressions per post.
+        - Optional visibility of recent viewers (privacy-aware) and basic analytics (e.g., top posts by reach).
+     Backend Plan:
+        1. Data Model Changes:
+            - User: replace/rename `viewedProfile` -> `profileViewsTotal` (numeric) and add `profileViewsUnique` (numeric) OR adopt an embedded aggregation doc.
+            - Post: keep `impressions` but clarify semantics; add `impressionsUnique` (numeric).
+            - New Collections:
+                a. `ProfileView` { _id, profileUserId, viewerUserId, ts(Date) }
+                b. `PostImpression` { _id, postId, viewerUserId, ts(Date) }
+            - (Optional) TTL Index for raw events (e.g., expire after 30–90 days) while keeping aggregated counters on User/Post.
+        2. Write Path (Profile View):
+            - When frontend loads a profile page (not self), send POST /analytics/profile-view { profileUserId } (token-authenticated).
+            - Backend logic:
+                 * Ignore if profileUserId === req.user.id.
+                 * Upsert (or insert) a lightweight event row (can skip duplicates within a time window by checking for existing viewerUserId+profileUserId where ts > now-6h).
+                 * If first event for viewer in window: increment User.profileViewsTotal (+1) and potentially unique count if no previous ANY record exists (lookup by viewerUserId+profileUserId ignoring time window) using an existence check or a separate unique index.
+        3. Write Path (Post Impression):
+            - Frontend batches visible post IDs (debounced intersection observer) and POST /analytics/post-impressions { postIds: [] }.
+            - Backend processes each:
+                 * For each postId create event if (no event in last 2 min for same user/post) to avoid scroll jitter inflation.
+                 * Always increment Post.impressions (raw total) with $inc.
+                 * Only increment Post.impressionsUnique the first time ever for that userId/postId pair.
+                 * Consider Mongo bulkWrite for efficiency.
+        4. De-duplication / Uniqueness Strategies:
+            - Option A (Mongo only): Use findOne for existing event; if none, insert & increment unique.
+            - Option B (Cache): Introduce an in-memory or Redis key: `pv:{profileUserId}:{viewerUserId}:{day}` and `pi:{postId}:{viewerUserId}:{hour}` to short-circuit DB writes for repeats.
+        5. Privacy & Security:
+            - Viewer list (recent 5–10) only if profile owner toggles a setting (future `settings.showViewers`).
+            - Do not expose full historical list directly; provide aggregated stats endpoint: /analytics/profile/:id/summary.
+        6. Endpoints (proposed):
+            - POST /analytics/profile-view
+            - POST /analytics/post-impressions
+            - GET  /analytics/profile/:id/summary -> { total, unique, recentViewers: [{userId, name, picturePath, ts}] }
+            - GET  /analytics/post/:id/summary -> { impressions, unique, lastImpressionTs }
+        7. Indexes:
+            - ProfileView: index { profileUserId, viewerUserId, ts } (compound), and { profileUserId, ts } for aggregates.
+            - PostImpression: index { postId, viewerUserId, ts } and { postId, ts }.
+        8. Aggregation / Maintenance Jobs:
+            - Nightly job (optional) to rebuild anomaly corrections or roll up daily unique counts for archival.
+        9. Migration:
+            - For existing data with placeholder values, reset counters to 0 unless preserving seed needed.
+     Frontend Plan:
+        1. Profile Page:
+            - On mount (useEffect) trigger fire-and-forget fetch to POST /analytics/profile-view.
+            - Display counters from user object (after refresh) or via lazy GET summary.
+            - If viewer list allowed, show avatar chips with tooltip time (format via timeAgo).
+        2. Feed & Post Components:
+            - Use IntersectionObserver to track when a post crosses a visibility threshold (e.g., 50% viewport for >300ms) and batch postIds.
+            - Debounce (e.g., every 1–2s) sending the batch to /analytics/post-impressions.
+            - Update local Redux state for the post impression count optimistically (+1 if first local view this session).
+        3. Performance:
+            - Maintain a Set in memory per session for seenPostIds to avoid redundant network spam.
+            - Hard cap per batch (e.g., 50 IDs) and flush on unmount.
+        4. UI/UX Considerations:
+            - Show compact "Impressions: X" near like/comment row (toggleable via settings).
+            - Provide hover tooltip clarifying definition ("Unique viewers vs total views").
+        5. Error Handling:
+            - Silently ignore analytics endpoint failures (non-critical) but log to console (dev) or send to future monitoring endpoint.
+     Edge Cases:
+        - Self views excluded.
+        - Non-authenticated guests (if later allowed) either ignored or tracked as anonymous bucket.
+        - Rapid scroll thrash: mitigated by time window & intersection threshold.
+        - Bot/script inflation: future heuristic (rate per user, user-agent filtering).
+     Incremental Delivery Strategy:
+        Phase 1: Simple counters (POST on mount & visible posts) w/out uniqueness.
+        Phase 2: Unique detection & batching.
+        Phase 3: Viewer list + privacy toggle.
+        Phase 4: Analytics summaries & dashboard.
+     Risks & Mitigations:
+        - High write volume -> batch & cache.
+        - Privacy concerns -> explicit setting to expose viewers.
+        - Data bloat -> TTL + aggregation roll-ups.
+     Success Criteria:
+        - <50ms added latency per batch call (server side).
+        - Accurate ±1 against manual test scenarios for uniqueness.
+        - No more than 1 analytics request per 2s during normal scroll.
 
 3. Potential Dead / Underutilized Code (Updated)
 - Mobile overflow `MoreHorizOutlined` without expanded menu actions.
