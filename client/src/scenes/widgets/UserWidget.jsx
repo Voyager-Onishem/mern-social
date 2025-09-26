@@ -70,7 +70,11 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
           const data = await resp.json().catch(() => ({}));
           if (aborted) return;
           if (resp.ok && typeof data.profileViewsTotal === 'number') {
-            dispatch(setUserProfileViewsTotal({ profileViewsTotal: data.profileViewsTotal }));
+            // Only update global store if this is the logged-in user's own profile
+            if (loggedUser?._id === userId) {
+              dispatch(setUserProfileViewsTotal({ profileViewsTotal: data.profileViewsTotal }));
+            }
+            // Always update local viewed profile object
             setUser(prev => prev ? { ...prev, profileViewsTotal: data.profileViewsTotal } : prev);
           }
         } catch {
