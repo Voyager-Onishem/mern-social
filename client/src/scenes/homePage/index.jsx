@@ -1,7 +1,7 @@
 // No direct API calls in this file, all handled by widgets already updated.
 import { Box, useMediaQuery } from "@mui/material";
 import { useSelector } from "react-redux";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Navbar from "scenes/navbar";
 import UserWidget from "scenes/widgets/UserWidget";
 import MyPostWidget from "scenes/widgets/MyPostWidget";
@@ -25,6 +25,23 @@ const HomePage = () => {
     }
   }, []);
 
+  const postWidgetRef = useRef(null);
+
+  // Observe visibility of the main MyPostWidget to inform Navbar
+  useEffect(() => {
+    const el = postWidgetRef.current;
+    if (!el || !('IntersectionObserver' in window)) return;
+    const obs = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        window.dispatchEvent(new CustomEvent('mypostwidget:inview', { detail: { inView: entry.isIntersecting } }));
+      }
+    }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+    };
+  }, []);
+
   return (
     <Box>
       <Navbar />
@@ -42,6 +59,7 @@ const HomePage = () => {
           flexBasis={isNonMobileScreens ? "42%" : undefined}
           mt={isNonMobileScreens ? undefined : "2rem"}
         >
+          <div ref={postWidgetRef} />
           <MyPostWidget picturePath={picturePath} />
           <PostsWidget userId={_id} />
         </Box>

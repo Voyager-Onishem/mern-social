@@ -1,6 +1,6 @@
 
 import { Box, Button, useMediaQuery } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "scenes/navbar";
@@ -31,6 +31,23 @@ const ProfilePage = () => {
   useEffect(() => {
     getUser();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const myPostAnchorRef = useRef(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const isOwnProfile = loggedInUser && loggedInUser._id === userId;
+    if (!isOwnProfile) return; // only observe when we actually render the widget inline
+    const el = myPostAnchorRef.current;
+    if (!el || !('IntersectionObserver' in window)) return;
+    const obs = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        window.dispatchEvent(new CustomEvent('mypostwidget:inview', { detail: { inView: entry.isIntersecting } }));
+      }
+    }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [user, loggedInUser, userId]);
 
   if (!user) return null;
 
@@ -73,6 +90,7 @@ const ProfilePage = () => {
         >
           {isOwnProfile && (
             <>
+              <div ref={myPostAnchorRef} />
               <MyPostWidget picturePath={user.picturePath} />
               <Box m="2rem 0" />
             </>

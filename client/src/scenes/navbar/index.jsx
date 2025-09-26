@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   IconButton,
@@ -7,9 +7,12 @@ import {
   Select,
   MenuItem,
   FormControl,
+  Button,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import CloseIcon from '@mui/icons-material/Close';
 import {
   Search,
   Message,
@@ -25,6 +28,9 @@ import { setMode, setLogout } from "state";
 import { useNavigate } from "react-router-dom";
 import FlexBetween from "components/FlexBetween";
 
+// The Navbar listens for a custom event 'mypostwidget:inview' dispatched by pages containing the inline MyPostWidget.
+// When the widget scrolls out of view, the event detail { inView: false } triggers a compact "Post" button.
+// Clicking that button opens a modal with the MyPostWidget (portal rendering avoided for simplicity by conditional inline render at top). 
 const Navbar = () => {
   const [isMobileMenuToggled, setIsMobileMenuToggled] = useState(false);
   const dispatch = useDispatch();
@@ -40,9 +46,21 @@ const Navbar = () => {
   const alt = theme.palette.background.alt;
 
   const fullName = `${user.firstName} ${user.lastName}`;
+  const [showFloatingPost, setShowFloatingPost] = useState(false);
+  const [openPostModal, setOpenPostModal] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (typeof e.detail?.inView === 'boolean') {
+        setShowFloatingPost(!e.detail.inView); // show when not in view
+      }
+    };
+    window.addEventListener('mypostwidget:inview', handler);
+    return () => window.removeEventListener('mypostwidget:inview', handler);
+  }, []);
 
   return (
-    <FlexBetween padding="1rem 6%" backgroundColor={alt}>
+    <FlexBetween padding="1rem 6%" backgroundColor={alt} sx={{ position: 'sticky', top: 0, zIndex: 100, }}>
       <FlexBetween gap="1.75rem">
         <Typography
           fontWeight="bold"
@@ -58,6 +76,19 @@ const Navbar = () => {
         >
           Alucon
         </Typography>
+        {showFloatingPost && (
+          <Button
+            variant="contained"
+            color="primary"
+            size="small"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={() => setOpenPostModal(true)}
+            sx={{ textTransform: 'none', fontWeight: 600 }}
+            aria-label="Create a post"
+          >
+            Post
+          </Button>
+        )}
         {isNonMobileScreens && (
           <FlexBetween
             backgroundColor={neutralLight}
@@ -188,6 +219,46 @@ const Navbar = () => {
               </Select>
             </FormControl>
           </FlexBetween>
+        </Box>
+      )}
+      {/* Lightweight modal for post creation when original widget scrolled away */}
+      {openPostModal && (
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            zIndex: 1300,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            overflowY: 'auto',
+            paddingTop: '5vh'
+          }}
+          aria-modal="true"
+          role="dialog"
+        >
+          <Box sx={{ position: 'relative', width: 'min(760px,90%)' }}>
+            <IconButton
+              onClick={() => setOpenPostModal(false)}
+              sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'rgba(0,0,0,0.35)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.55)' } }}
+              aria-label="Close post dialog"
+            >
+              <CloseIcon />
+            </IconButton>
+            {/* Lazy import alternative skipped; reuse component directly to keep state logic consistent */}
+            <Box sx={{ maxHeight: '80vh', overflowY: 'auto' }}>
+              {/* MyPostWidget is imported at page level normally; to avoid circular deps we inline dynamic require */}
+              {(() => {
+                try {
+                  const MyPostWidget = require('scenes/widgets/MyPostWidget').default;
+                  return <MyPostWidget picturePath={user.picturePath} />;
+                } catch (e) {
+                  return <Box p={2}><Typography color="error">Failed to load post widget.</Typography></Box>;
+                }
+              })()}
+            </Box>
+          </Box>
         </Box>
       )}
     </FlexBetween>
