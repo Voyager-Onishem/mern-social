@@ -20,6 +20,7 @@ Scope: Entire React client under `client/src`.
  - Snackbar error handling for like/comment/comment edit/delete & like failures (Quick Win B).
  - Simple lightbox modal for images/videos with keyboard nav (Quick Win C).
  - Location & occupation editing via profile dialog (Feature 6).
+ - Real-time feed baseline via SSE (new posts, likes, comments update live).
 
 2. Unimplemented / Non-Functional / Partial Features
 1. Share action (PARTIAL)
@@ -61,8 +62,22 @@ Scope: Entire React client under `client/src`.
     - Theme infrastructure present; no visible toggle control.
 17. Friend add/remove
     - Not verified in scanned code; if absent, friend list is read-only.
-18. Real-time updates
-    - No sockets/polling for incoming posts/likes/comments; manual refresh dependent.
+18. Real-time updates (PARTIAL)
+        Implemented:
+            - Server-Sent Events (SSE) endpoint `/realtime` established.
+            - Broadcast events: post:new, post:like, comment:add, comment:edit, comment:delete.
+            - Client auto-subscribes after auth; Redux updates feed live (new post prepend, like/comment mutations merged).
+        Remaining / Potential Improvements:
+            a. Reconnect backoff & exponential retry (currently relies on EventSource implicit behavior / effect remount).
+            b. Heartbeat/ping interval (keep-alive for aggressive proxies; currently only initial ping).
+            c. Selective subscription / channel filtering (e.g., only friends' posts, or only visible post IDs).
+            d. Fallback to polling when EventSource unsupported or repeatedly failing.
+            e. Presence & typing indicators (would require additional event types + ephemeral state store).
+            f. Support post deletion / moderation events.
+            g. Batch events (coalesce rapid like/comment bursts to reduce re-renders).
+            h. Upgrade path to WebSocket for bidirectional features (back-pressure, acknowledgements, presence updates).
+            i. Client-side dedupe / version checks (ignore stale events if out-of-order delivery happens).
+            j. Metrics & monitoring (count active connections, log disconnect reasons, alert on abnormal churn).
 19. Error boundaries
     - No <ErrorBoundary>; iframe/media errors could cascade.
 20. Test coverage
@@ -179,6 +194,9 @@ G. Configurable MAX_MEDIA_FILES via env & enforce on server.
 H. Tooltip with edited timestamp for edited comments.
 I. Add explicit remove-embed button when auto-detected media is present.
 J. Introduce ErrorBoundary component.
+ K. SSE heartbeat & reconnect backoff (convert 18.a & 18.b into short-term actionable items).
+ L. Polling fallback for SSE failures (18.d).
+ M. Batch/coalesce rapid SSE events (18.g) to reduce render thrash.
 
 6. Medium-Term Improvements (Revised)
 1. Pagination or infinite scroll & virtualization.
@@ -191,6 +209,9 @@ J. Introduce ErrorBoundary component.
 8. Rate limiting UI & server sync.
 9. Config-driven UI/media limits.
 10. Enhanced accessibility (focus outlines, skip links, ARIA roles review).
+ 11. Presence & typing indicators over upgraded real-time channel (18.e / 18.h).
+ 12. Selective real-time channels & per-user/topic subscriptions (18.c).
+ 13. Real-time metrics dashboard & monitoring hooks (18.j).
 
 7. Longer-Term Enhancements (Expanded)
 1. Real-time updates (WebSocket/SSE) incl. presence & typing.
