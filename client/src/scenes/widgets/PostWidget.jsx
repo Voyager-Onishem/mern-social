@@ -4,6 +4,7 @@ import {
   FavoriteOutlined,
   ShareOutlined,
   GifBoxOutlined,
+  Close,
 } from "@mui/icons-material";
 import { Box, Divider, IconButton, Typography, useTheme, Snackbar, Tooltip, Alert } from "@mui/material";
 import Comment from "components/Comment";
@@ -11,7 +12,7 @@ import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
 import { useState, useRef } from "react";
-import { extractFirstGiphyUrl, isGiphyUrl } from "utils/isGiphyUrl";
+import { extractFirstGiphyUrl, isGiphyUrl, extractGiphyUrls } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
 import { timeAgo } from "utils/timeAgo";
 import { objectIdToDate } from "utils/objectId";
@@ -41,6 +42,7 @@ const PostWidget = ({
 }) => {
   const [isComments, setIsComments] = useState(false);
   const [commentText, setCommentText] = useState("");
+  const [commentGifUrls, setCommentGifUrls] = useState([]); // store selected / pasted GIFs separately so URLs are hidden
   const [currentComments, setCurrentComments] = useState(comments || []);
   const [loadingComments, setLoadingComments] = useState(false);
   const [giphyOpen, setGiphyOpen] = useState(false);
@@ -72,6 +74,9 @@ const PostWidget = ({
   const { palette } = useTheme();
   const main = palette.neutral.main;
   const primary = palette.primary.main;
+  const inputBg = palette.mode === 'dark' ? palette.background.alt : '#fff';
+  const inputBorder = palette.mode === 'dark' ? palette.neutral.light : palette.neutral.medium;
+  const inputFocus = palette.primary.main;
 
   // Fetch latest comments for this post
   const fetchComments = async () => {
@@ -105,18 +110,20 @@ const PostWidget = ({
 
   // Submit a new comment
   async function handleAddComment() {
-    if (!commentText.trim()) return;
+    const trimmed = commentText.trim();
+    if (!trimmed && commentGifUrls.length === 0) return; // allow GIF-only comment
+    const toSend = [trimmed, commentGifUrls.join(' ')].filter(Boolean).join(' ');
     const optimistic = {
       _id: `temp-${Date.now()}`,
       userId: loggedInUserId,
       username: '',
-      text: commentText,
+      text: toSend,
       createdAt: new Date(),
       __optimistic: true,
     };
     setCurrentComments(prev => [...prev, optimistic]);
-    const toSend = commentText;
     setCommentText('');
+    setCommentGifUrls([]);
     try {
       const response = await fetch(`${API_URL}/posts/${postId}/comment`, {
         method: "PATCH",
@@ -128,7 +135,11 @@ const PostWidget = ({
         setErrorSnack({ open: true, message: updatedPost?.message || 'Failed to add comment' });
         // rollback
         setCurrentComments(prev => prev.filter(c => c !== optimistic));
-        setCommentText(toSend);
+        // restore original input state as best effort (text part only; GIFs lost unless we re-extract)
+        const lostGifs = extractGiphyUrls(toSend);
+        const textOnly = toSend.split(/\s+/).filter(t => !lostGifs.includes(t)).join(' ');
+        setCommentText(textOnly);
+        setCommentGifUrls(lostGifs);
         return;
       }
       dispatch(setPost({ post: updatedPost }));
@@ -136,7 +147,10 @@ const PostWidget = ({
     } catch (err) {
       setErrorSnack({ open: true, message: 'Network error adding comment' });
       setCurrentComments(prev => prev.filter(c => c !== optimistic));
-      setCommentText(toSend);
+      const lostGifs = extractGiphyUrls(toSend);
+      const textOnly = toSend.split(/\s+/).filter(t => !lostGifs.includes(t)).join(' ');
+      setCommentText(textOnly);
+      setCommentGifUrls(lostGifs);
     }
   }
 
@@ -201,7 +215,12 @@ const PostWidget = ({
 
   // Insert GIF URL into comment
   function handleGifSelect(gifUrl) {
-    setCommentText((prev) => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + gifUrl + ' ');
+    setCommentGifUrls(prev => (prev.includes(gifUrl) ? prev : [...prev, gifUrl]));
+    setGiphyOpen(false);
+  }
+
+  function handleRemoveGif(gifUrl) {
+    setCommentGifUrls(prev => prev.filter(u => u !== gifUrl));
   }
 
   // Like handler
@@ -433,33 +452,71 @@ const PostWidget = ({
                 })()}
                 <Divider />
               </Box>
-              <Box display="flex" alignItems="center" gap={1} mt={1}>
-                                 <Box sx={{ position: 'relative', flex: 1 }}>
-                                   <input
-                                     type="text"
-                                     value={commentText}
-                                     onChange={e => setCommentText(e.target.value)}
-                                     placeholder="Write a comment..."
-                                     aria-label="Comment text"
-                                     maxLength={MAX_COMMENT_CHARS + 200}
-                                     style={{ width: '100%', padding: "0.5rem", paddingRight: '4.5rem', borderRadius: "1rem", border: `1px solid ${main}` }}
-                                     onKeyDown={e => { if (e.key === 'Enter') handleAddComment(); }}
-                                   />
-                                   <Typography
-                                     variant="caption"
-                                     sx={{ position: 'absolute', bottom: 4, right: 10, fontWeight: 500, color: commentText.length > MAX_COMMENT_CHARS ? 'error.main' : (commentText.length > MAX_COMMENT_CHARS * 0.85 ? 'warning.main' : main), userSelect: 'none' }}
-                                     aria-live="polite"
-                                   >
-                                     {commentText.length}/{MAX_COMMENT_CHARS}
-                                   </Typography>
-                                 </Box>
+              <Box display="flex" alignItems="flex-start" gap={1} mt={1}>
+                <Box sx={{ position: 'relative', flex: 1 }}>
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={e => {
+                      let val = e.target.value;
+                      const pastedGifs = extractGiphyUrls(val);
+                      if (pastedGifs.length) {
+                        // remove all occurrences from the visible input
+                        pastedGifs.forEach(u => { val = val.split(u).join(' '); });
+                        val = val.replace(/\s+/g, ' ').trimStart();
+                        setCommentGifUrls(prev => {
+                          const merged = [...prev];
+                          pastedGifs.forEach(u => { if (!merged.includes(u)) merged.push(u); });
+                          return merged;
+                        });
+                      }
+                      setCommentText(val);
+                    }}
+                    placeholder="Write a comment..."
+                    aria-label="Comment text"
+                    maxLength={MAX_COMMENT_CHARS + 200}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem',
+                      paddingRight: '4.5rem',
+                      borderRadius: '1rem',
+                      border: `1px solid ${inputBorder}`,
+                      background: inputBg,
+                      color: main,
+                      outline: 'none',
+                      transition: 'border-color 120ms ease, box-shadow 120ms ease',
+                    }}
+                    onKeyDown={e => { if (e.key === 'Enter') handleAddComment(); }}
+                    onFocus={e => { e.target.style.borderColor = inputFocus; e.target.style.boxShadow = `0 0 0 2px ${inputFocus}33`; }}
+                    onBlur={e => { e.target.style.borderColor = inputBorder; e.target.style.boxShadow = 'none'; }}
+                  />
+                  <Typography
+                    variant="caption"
+                    sx={{ position: 'absolute', bottom: 4, right: 10, fontWeight: 500, color: commentText.length > MAX_COMMENT_CHARS ? 'error.main' : (commentText.length > MAX_COMMENT_CHARS * 0.85 ? 'warning.main' : main), userSelect: 'none' }}
+                    aria-live="polite"
+                  >
+                    {commentText.length}/{MAX_COMMENT_CHARS}
+                  </Typography>
+                  {commentGifUrls.length > 0 && (
+                    <Box mt={1} display="flex" flexWrap="wrap" gap={1} aria-label={`Attached GIFs (${commentGifUrls.length})`}>
+                      {commentGifUrls.map(u => (
+                        <Box key={u} sx={{ position: 'relative' }}>
+                          <img src={u} alt="GIF preview" style={{ maxWidth: 100, borderRadius: 6, display: 'block' }} />
+                          <IconButton size="small" aria-label="Remove GIF" onClick={() => handleRemoveGif(u)} sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'rgba(0,0,0,0.5)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' } }}>
+                            <Close fontSize="inherit" />
+                          </IconButton>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
                 <IconButton onClick={() => setGiphyOpen(true)} title="Add GIF" aria-label="Add a GIF to your comment">
                   <GifBoxOutlined />
                 </IconButton>
                 <PostActionButton
                   size="small"
                   onClick={handleAddComment}
-                   disabled={!commentText.trim() || commentText.length > MAX_COMMENT_CHARS}
+                  disabled={(commentText.trim().length === 0 && commentGifUrls.length === 0) || commentText.length > MAX_COMMENT_CHARS}
                   label="Post"
                   sx={{ borderRadius: '1rem', padding: '0.35rem 0.9rem' }}
                 />
