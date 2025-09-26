@@ -7,7 +7,13 @@ import MyPostWidget from '../MyPostWidget';
 
 // simple localStorage mock for draft restore
 beforeEach(() => {
+  jest.useFakeTimers();
   localStorage.clear();
+});
+
+afterEach(() => {
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
 });
 
 function setupWithDraft(text='Draft text') {
@@ -36,6 +42,8 @@ describe('MyPostWidget', () => {
     );
     const input = screen.getByLabelText(/Post text/i);
     fireEvent.change(input, { target: { value: 'Something' } });
+    // advance debounce timer for draft save (400ms)
+    jest.advanceTimersByTime(500);
     expect(screen.getByText(/Clear Draft/i)).toBeInTheDocument();
   });
 });

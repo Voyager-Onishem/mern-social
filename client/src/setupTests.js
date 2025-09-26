@@ -1,5 +1,12 @@
 // Setup file for CRA Jest to avoid hanging tests due to browser APIs
 import '@testing-library/jest-dom';
+// Use modern fake timers by default to prevent lingering real timers from draft saves or debounced logic
+beforeAll(() => {
+  jest.useFakeTimers();
+});
+afterAll(() => {
+  jest.useRealTimers();
+});
 
 // requestAnimationFrame/cancelAnimationFrame
 if (!global.requestAnimationFrame) global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
