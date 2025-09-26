@@ -434,7 +434,7 @@ const PostWidget = ({
                                      {commentText.length}/{MAX_COMMENT_CHARS}
                                    </Typography>
                                  </Box>
-                <IconButton onClick={() => setGiphyOpen(true)} title="Add GIF">
+                <IconButton onClick={() => setGiphyOpen(true)} title="Add GIF" aria-label="Add a GIF to your comment">
                   <GifBoxOutlined />
                 </IconButton>
                 <PostActionButton

@@ -84,7 +84,7 @@ const Navbar = () => {
             padding="0.1rem 1.5rem"
           >
             <InputBase placeholder="Search..." />
-            <IconButton>
+            <IconButton aria-label="Search">
               <Search />
             </IconButton>
           </FlexBetween>

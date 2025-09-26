@@ -145,6 +145,15 @@ const GiphyPicker = ({ open, onClose, onSelect }) => {
                       src={small?.url}
                       alt={gif.title || 'GIF'}
                       loading="lazy"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Select GIF ${gif.title || gif.id}`}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          if (original) { onSelect(original); onClose(); }
+                        }
+                      }}
                       onClick={() => {
                         if (original) {
                           onSelect(original);

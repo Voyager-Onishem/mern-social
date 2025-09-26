@@ -95,6 +95,7 @@ const Friend = ({ friendId, name, subtitle, userPicturePath, onFriendToggled }) 
         <IconButton
           onClick={() => patchFriend()}
           sx={{ backgroundColor: primaryLight, p: "0.6rem" }}
+          aria-label={isFriend ? 'Remove friend' : 'Add friend'}
         >
           {isFriend ? (
             <PersonRemoveOutlined sx={{ color: primaryDark }} />

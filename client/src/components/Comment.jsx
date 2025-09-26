@@ -66,13 +66,14 @@ const Comment = ({
                     size="small"
                     onClick={() => onSaveEdit && onSaveEdit(commentId, editText)}
                     disabled={!editText.trim()}
+                    aria-label="Save edited comment"
                   >
                     <SaveOutlined fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
               <Tooltip title="Cancel" arrow>
-                <IconButton size="small" onClick={onCancelEdit}>
+                <IconButton size="small" onClick={onCancelEdit} aria-label="Cancel editing comment">
                   <Close fontSize="small" />
                 </IconButton>
               </Tooltip>
