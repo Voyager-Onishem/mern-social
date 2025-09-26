@@ -210,8 +210,8 @@ Quick Win Status Updates (2025-09-26):
  - L PARTIAL: Polling fallback (10s interval) activates after repeated SSE failures (attempt >5); future enhancement: adaptive interval & disable when SSE recovers.
  - M IMPLEMENTED: Client batches rapid SSE events with 250ms coalescing window before dispatch.
  - D Not Needed: No native alert() calls found; handled by existing Snackbar patterns.
- - E Pending.
- - F Pending.
+ - E IMPLEMENTED: Skeleton loaders (3 placeholders) show while fetching initial posts (feed or profile) until data loads.
+ - F IMPLEMENTED: Optimistic comment add/edit/delete with rollback on failure (temp IDs, rollback of text or re-insertion on deletion failure).
 D. Replace all alert() calls with unified Snackbar/toast. (B & C done)
 E. Add skeleton loaders for posts & comments.
 F. Optimistic comment update & rollback pattern.

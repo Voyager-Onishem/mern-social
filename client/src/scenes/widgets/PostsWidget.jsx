@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setPosts } from "state";
+import { setPosts, setPostsLoading } from "state";
+import { Box, Skeleton } from '@mui/material';
 import PostWidget from "./PostWidget";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -9,6 +10,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   const dispatch = useDispatch();
   const posts = useSelector((state) => state.posts);
   const token = useSelector((state) => state.token);
+  const loading = useSelector((state) => state.postsLoading);
 
   const getPosts = async () => {
     try {
@@ -56,6 +58,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   };
 
   useEffect(() => {
+    dispatch(setPostsLoading(true));
     if (isProfile) {
       getUserPosts();
     } else {
@@ -65,6 +68,17 @@ const PostsWidget = ({ userId, isProfile = false }) => {
 
   return (
     <>
+      {loading && posts.length === 0 && (
+        <Box>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Box key={i} sx={{ mb: 3 }}>
+              <Skeleton variant="rectangular" height={24} width={160} sx={{ mb: 1, borderRadius: 1 }} />
+              <Skeleton variant="text" width="90%" />
+              <Skeleton variant="rectangular" height={250} sx={{ mt: 1, borderRadius: 2 }} />
+            </Box>
+          ))}
+        </Box>
+      )}
       {posts.map(
         ({
           _id,

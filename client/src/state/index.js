@@ -5,6 +5,7 @@ const initialState = {
   user: null,
   token: null,
   posts: [],
+  postsLoading: false,
 };
 
 export const authSlice = createSlice({
@@ -31,6 +32,10 @@ export const authSlice = createSlice({
     },
     setPosts: (state, action) => {
       state.posts = action.payload.posts;
+      state.postsLoading = false;
+    },
+    setPostsLoading: (state, action) => {
+      state.postsLoading = !!action.payload;
     },
     setPost: (state, action) => {
       const updatedPosts = state.posts.map((post) => {
@@ -50,4 +55,5 @@ export const authSlice = createSlice({
 
 export const { setMode, setLogin, setLogout, setFriends, setPosts, setPost, addPost } =
   authSlice.actions;
+export const { setPostsLoading } = authSlice.actions;
 export default authSlice.reducer;

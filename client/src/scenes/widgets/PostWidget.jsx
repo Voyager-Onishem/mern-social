@@ -10,7 +10,7 @@ import Comment from "components/Comment";
 import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { extractFirstGiphyUrl, isGiphyUrl } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
 import { timeAgo } from "utils/timeAgo";
@@ -98,28 +98,37 @@ const PostWidget = ({
   // Submit a new comment
   async function handleAddComment() {
     if (!commentText.trim()) return;
+    const optimistic = {
+      _id: `temp-${Date.now()}`,
+      userId: loggedInUserId,
+      username: '',
+      text: commentText,
+      createdAt: new Date(),
+      __optimistic: true,
+    };
+    setCurrentComments(prev => [...prev, optimistic]);
+    const toSend = commentText;
+    setCommentText('');
     try {
       const response = await fetch(`${API_URL}/posts/${postId}/comment`, {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: loggedInUserId,
-          text: commentText,
-        }),
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: loggedInUserId, text: toSend }),
       });
       const updatedPost = await response.json().catch(() => ({}));
       if (!response.ok || !updatedPost?._id) {
         setErrorSnack({ open: true, message: updatedPost?.message || 'Failed to add comment' });
+        // rollback
+        setCurrentComments(prev => prev.filter(c => c !== optimistic));
+        setCommentText(toSend);
         return;
       }
       dispatch(setPost({ post: updatedPost }));
       setCurrentComments(updatedPost.comments || []);
-      setCommentText("");
     } catch (err) {
       setErrorSnack({ open: true, message: 'Network error adding comment' });
+      setCurrentComments(prev => prev.filter(c => c !== optimistic));
+      setCommentText(toSend);
     }
   }
 
@@ -137,18 +146,16 @@ const PostWidget = ({
   async function handleSaveEdit(commentId, newText) {
     if (!newText.trim()) return;
     setIsSavingEdit(true);
+    const original = currentComments.find(c => String(c._id) === String(commentId));
+    const originalText = original?.text;
+    setCurrentComments(prev => prev.map(c => String(c._id) === String(commentId) ? { ...c, text: newText, editedAt: new Date(), __optimistic: true } : c));
     try {
-      const response = await fetch(`${API_URL}/posts/${postId}/comment/edit`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ commentId, userId: loggedInUserId, text: newText })
-      });
+      const response = await fetch(`${API_URL}/posts/${postId}/comment/edit`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ commentId, userId: loggedInUserId, text: newText }) });
       const updatedPost = await response.json().catch(() => ({}));
       if (!response.ok || !updatedPost?._id) {
         setErrorSnack({ open: true, message: updatedPost?.message || 'Failed to save edit' });
+        // rollback
+        setCurrentComments(prev => prev.map(c => String(c._id) === String(commentId) ? { ...c, text: originalText, editedAt: original?.editedAt } : c));
       } else {
         dispatch(setPost({ post: updatedPost }));
         setCurrentComments(updatedPost.comments || []);
@@ -156,6 +163,7 @@ const PostWidget = ({
       }
     } catch (e) {
       setErrorSnack({ open: true, message: 'Network error saving edit' });
+      setCurrentComments(prev => prev.map(c => String(c._id) === String(commentId) ? { ...c, text: originalText, editedAt: original?.editedAt } : c));
     }
     setIsSavingEdit(false);
   }
@@ -163,24 +171,22 @@ const PostWidget = ({
   async function handleDeleteComment(commentId) {
     if (!commentId) return;
     setIsDeletingId(commentId);
+    const existing = currentComments.find(c => String(c._id) === String(commentId));
+    setCurrentComments(prev => prev.filter(c => String(c._id) !== String(commentId)));
     try {
-      const response = await fetch(`${API_URL}/posts/${postId}/comment/delete`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ commentId, userId: loggedInUserId })
-      });
+      const response = await fetch(`${API_URL}/posts/${postId}/comment/delete`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ commentId, userId: loggedInUserId }) });
       const updatedPost = await response.json().catch(() => ({}));
       if (!response.ok || !updatedPost?._id) {
         setErrorSnack({ open: true, message: updatedPost?.message || 'Failed to delete comment' });
+        // rollback
+        setCurrentComments(prev => [...prev, existing].sort((a,b)=> String(a._id).localeCompare(String(b._id))));
       } else {
         dispatch(setPost({ post: updatedPost }));
         setCurrentComments(updatedPost.comments || []);
       }
     } catch (e) {
       setErrorSnack({ open: true, message: 'Network error deleting comment' });
+      setCurrentComments(prev => [...prev, existing].sort((a,b)=> String(a._id).localeCompare(String(b._id))));
     }
     setIsDeletingId(null);
   }
