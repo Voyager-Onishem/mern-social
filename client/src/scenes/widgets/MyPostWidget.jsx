@@ -48,6 +48,8 @@ const MyPostWidget = ({ picturePath }) => {
   const isNonMobileScreens = useMediaQuery("(min-width: 1000px)");
   const mediumMain = palette.neutral.mediumMain;
   const medium = palette.neutral.medium;
+  // Input length limits (could be externalized later)
+  const MAX_POST_CHARS = 500;
 
   const handlePost = async () => {
     setSubmitError("");
@@ -237,17 +239,38 @@ const MyPostWidget = ({ picturePath }) => {
     <WidgetWrapper>
       <FlexBetween gap="1.5rem">
         <UserImage image={picturePath} />
-        <InputBase
-          placeholder="What's on your mind..."
-          onChange={(e) => setPost(e.target.value)}
-          value={post}
-          sx={{
-            width: "100%",
-            backgroundColor: palette.neutral.light,
-            borderRadius: "2rem",
-            padding: "1rem 2rem",
-          }}
-        />
+        <Box sx={{ position: 'relative', flex: 1 }}>
+          <InputBase
+            placeholder="What's on your mind..."
+            onChange={(e) => setPost(e.target.value)}
+            value={post}
+            inputProps={{
+              'aria-label': "Post text",
+              maxLength: MAX_POST_CHARS + 200, // allow some overflow but show error state
+            }}
+            sx={{
+              width: "100%",
+              backgroundColor: palette.neutral.light,
+              borderRadius: "2rem",
+              padding: "1rem 2rem",
+              pr: '5rem',
+            }}
+          />
+          <Typography
+            variant="caption"
+            sx={{
+              position: 'absolute',
+              bottom: 4,
+              right: 14,
+              color: post.length > MAX_POST_CHARS ? 'error.main' : (post.length > MAX_POST_CHARS * 0.85 ? 'warning.main' : medium),
+              fontWeight: 500,
+              userSelect: 'none'
+            }}
+            aria-live="polite"
+          >
+            {post.length}/{MAX_POST_CHARS}
+          </Typography>
+        </Box>
       </FlexBetween>
       {/* Recording popup */}
       {isRecording && (
@@ -480,8 +503,14 @@ const MyPostWidget = ({ picturePath }) => {
           <Typography color="error" sx={{ mr: 2 }}>{submitError}</Typography>
         )}
         <PostActionButton
-          disabled={!post?.trim() && mediaFiles.length === 0 && !audioBlob}
-          onClick={handlePost}
+          disabled={( !post?.trim() && mediaFiles.length === 0 && !audioBlob) || post.length > MAX_POST_CHARS}
+          onClick={() => {
+            if (post.length > MAX_POST_CHARS) {
+              notify(`Post is too long (${post.length}/${MAX_POST_CHARS}). Please shorten it.`, { severity: 'error' });
+              return;
+            }
+            handlePost();
+          }}
           label="Post"
         />
       </FlexBetween>

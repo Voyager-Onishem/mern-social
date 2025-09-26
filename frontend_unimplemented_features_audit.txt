@@ -46,8 +46,9 @@ Scope: Entire React client under `client/src`.
     - No pause/resume, trimming, duration metadata display, or re-record confirmation.
 11. Feedback on actions (PARTIAL)
     - Snackbar error surfaced for like/comment/add/edit/delete and comment load; remaining: global provider & retry/optimistic patterns.
-12. Input validation UX
-    - No character count/limit displays; rely on backend acceptance.
+12. Input validation UX (IMPLEMENTED - POST & COMMENT LIMITS)
+    - Added live character counters & soft limits (post: 500 chars, comment: 300 chars) with color thresholds (85% warn, >100% error) and disabled submission when exceeded.
+    - Future: externalize limits to config/env and add remaining field-specific validations (e.g., social links, role length).
 13. Shareable deep links
     - No dedicated `/post/:id` route; cannot open a single post in isolation.
 14. Draft persistence

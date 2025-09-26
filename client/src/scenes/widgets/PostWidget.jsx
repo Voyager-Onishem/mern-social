@@ -59,6 +59,7 @@ const PostWidget = ({
   const loggedInUserId = useSelector((state) => state.user._id);
   const isLiked = Boolean(likes[loggedInUserId]);
   const likeCount = Object.keys(likes).length;
+  const MAX_COMMENT_CHARS = 300;
 
   const { palette } = useTheme();
   const main = palette.neutral.main;
@@ -414,21 +415,32 @@ const PostWidget = ({
                 <Divider />
               </Box>
               <Box display="flex" alignItems="center" gap={1} mt={1}>
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={e => setCommentText(e.target.value)}
-                  placeholder="Write a comment..."
-                  style={{ flex: 1, padding: "0.5rem", borderRadius: "1rem", border: `1px solid ${main}` }}
-                  onKeyDown={e => { if (e.key === 'Enter') handleAddComment(); }}
-                />
+                                 <Box sx={{ position: 'relative', flex: 1 }}>
+                                   <input
+                                     type="text"
+                                     value={commentText}
+                                     onChange={e => setCommentText(e.target.value)}
+                                     placeholder="Write a comment..."
+                                     aria-label="Comment text"
+                                     maxLength={MAX_COMMENT_CHARS + 200}
+                                     style={{ width: '100%', padding: "0.5rem", paddingRight: '4.5rem', borderRadius: "1rem", border: `1px solid ${main}` }}
+                                     onKeyDown={e => { if (e.key === 'Enter') handleAddComment(); }}
+                                   />
+                                   <Typography
+                                     variant="caption"
+                                     sx={{ position: 'absolute', bottom: 4, right: 10, fontWeight: 500, color: commentText.length > MAX_COMMENT_CHARS ? 'error.main' : (commentText.length > MAX_COMMENT_CHARS * 0.85 ? 'warning.main' : main), userSelect: 'none' }}
+                                     aria-live="polite"
+                                   >
+                                     {commentText.length}/{MAX_COMMENT_CHARS}
+                                   </Typography>
+                                 </Box>
                 <IconButton onClick={() => setGiphyOpen(true)} title="Add GIF">
                   <GifBoxOutlined />
                 </IconButton>
                 <PostActionButton
                   size="small"
                   onClick={handleAddComment}
-                  disabled={!commentText.trim()}
+                   disabled={!commentText.trim() || commentText.length > MAX_COMMENT_CHARS}
                   label="Post"
                   sx={{ borderRadius: '1rem', padding: '0.35rem 0.9rem' }}
                 />
