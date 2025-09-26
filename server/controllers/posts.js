@@ -1,17 +1,22 @@
 import Post from "../models/Post.js";
 import User from "../models/User.js";
 
+// Helper to normalize a Post document/plain object for JSON responses
+function serializePost(p) {
+  if (!p) return null;
+  const obj = typeof p.toObject === 'function' ? p.toObject() : { ...p };
+  const mediaPaths = (obj.mediaPaths && obj.mediaPaths.length) ? obj.mediaPaths : (obj.picturePath ? [obj.picturePath] : []);
+  const likes = obj.likes instanceof Map ? Object.fromEntries(obj.likes) : (obj.likes || {});
+  return { ...obj, mediaPaths, likes };
+}
+
 // GET SINGLE POST
 export const getPost = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await Post.findById(id);
     if (!post) return res.status(404).json({ message: "Post not found" });
-    const serialized = {
-      ...post.toObject(),
-      mediaPaths: (post.mediaPaths && post.mediaPaths.length) ? post.mediaPaths : (post.picturePath ? [post.picturePath] : []),
-    };
-    res.status(200).json(serialized);
+    res.status(200).json(serializePost(post));
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
@@ -39,7 +44,7 @@ export const addComment = async (req, res) => {
       { new: true }
     );
     if (!updatedPost) return res.status(404).json({ message: "Post not found" });
-    res.status(200).json(updatedPost);
+    res.status(200).json(serializePost(updatedPost));
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
@@ -58,7 +63,7 @@ export const editComment = async (req, res) => {
     comment.text = text;
     comment.editedAt = new Date();
     await post.save();
-    return res.status(200).json(post);
+    return res.status(200).json(serializePost(post));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -76,7 +81,7 @@ export const deleteComment = async (req, res) => {
   if (String(post.comments[commentIndex].userId) !== String(userId)) return res.status(403).json({ code: 'forbidden', message: 'Cannot delete another user\'s comment' });
     post.comments.splice(commentIndex, 1);
     await post.save();
-    return res.status(200).json(post);
+    return res.status(200).json(serializePost(post));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -134,10 +139,7 @@ export const createPost = async (req, res) => {
     });
     await newPost.save();
     const posts = await Post.find();
-    const serialized = posts.map(p => ({
-      ...p.toObject(),
-      mediaPaths: (p.mediaPaths && p.mediaPaths.length) ? p.mediaPaths : (p.picturePath ? [p.picturePath] : []),
-    }));
+    const serialized = posts.map(p => serializePost(p));
     return res.status(201).json(serialized);
   } catch (err) {
   console.error('createPost error:', err);
@@ -149,10 +151,7 @@ export const createPost = async (req, res) => {
 export const getFeedPosts = async (req, res) => {
   try {
     const post = await Post.find();
-    res.status(200).json(post.map(p => ({
-      ...p.toObject(),
-      mediaPaths: (p.mediaPaths && p.mediaPaths.length) ? p.mediaPaths : (p.picturePath ? [p.picturePath] : []),
-    })));
+    res.status(200).json(post.map(p => serializePost(p)));
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
@@ -175,27 +174,28 @@ export const getUserPosts = async (req, res) => {
 export const likePost = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body;
-    const post = await Post.findById(id);
-    const isLiked = post.likes.get(userId);
-
-    if (isLiked) {
-      post.likes.delete(userId);
-    } else {
-      post.likes.set(userId, true);
+    // Support both body userId and token-based id (body takes precedence)
+    let { userId } = req.body || {};
+    if (!userId && req.user && req.user.id) userId = req.user.id;
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required to like/unlike a post' });
     }
+    const post = await Post.findById(id);
+    if (!post) return res.status(404).json({ message: 'Post not found' });
 
-    const updatedPost = await Post.findByIdAndUpdate(
-      id,
-      { likes: post.likes },
-      { new: true }
-    );
+    // Normalize likes to plain object for toggle logic
+    const likesObj = post.likes instanceof Map ? Object.fromEntries(post.likes) : (post.likes || {});
+    const alreadyLiked = !!likesObj[userId];
+    if (alreadyLiked) delete likesObj[userId]; else likesObj[userId] = true;
 
-    res.status(200).json({
-      ...updatedPost.toObject(),
-      mediaPaths: (updatedPost.mediaPaths && updatedPost.mediaPaths.length) ? updatedPost.mediaPaths : (updatedPost.picturePath ? [updatedPost.picturePath] : []),
-    });
+    // Persist back (Mongoose will coerce plain object into Map)
+    post.likes = likesObj;
+    await post.save();
+    const fresh = await Post.findById(id);
+    return res.status(200).json(serializePost(fresh));
   } catch (err) {
-    res.status(404).json({ message: err.message });
+    console.error('likePost error:', err);
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || 'Failed to like post' });
   }
 };
