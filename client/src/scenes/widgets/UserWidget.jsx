@@ -28,6 +28,7 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
   const [draftPictureFile, setDraftPictureFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [snack, setSnack] = useState({ open: false, msg: '', severity: 'info' });
+  const [impressionsTotal, setImpressionsTotal] = useState(null);
   const { palette } = useTheme();
   const navigate = useNavigate();
   const token = useSelector((state) => state.token);
@@ -83,6 +84,27 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
     useEffect(() => {
       profileViewRecordedRef.current = false;
     }, [userId]);
+
+    // Fetch aggregated impressions total for the profile owner (Feature 26 Phase 1 display)
+    useEffect(() => {
+      if (!token || !userId) return;
+      let aborted = false;
+      (async () => {
+        try {
+          const resp = await fetch(`${API_URL}/analytics/user/${userId}/impressions`, { headers: { 'Authorization': `Bearer ${token}` } });
+          const data = await resp.json().catch(() => ({}));
+          if (aborted) return;
+          if (resp.ok && typeof data.impressionsTotal === 'number') {
+            setImpressionsTotal(data.impressionsTotal);
+          } else {
+            setImpressionsTotal(0);
+          }
+        } catch {
+          if (!aborted) setImpressionsTotal(0);
+        }
+      })();
+      return () => { aborted = true; };
+    }, [token, userId]);
 
   const isOwnProfile = loggedUser?._id === userId;
 
@@ -164,7 +186,7 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
     location,
     occupation,
     viewedProfile, // legacy field
-    impressions, // legacy placeholder (may not reflect real data yet)
+  impressions, // legacy placeholder (ignored in favor of aggregated total)
     profileViewsTotal,
     friends,
   } = user;
@@ -255,9 +277,9 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
           </Typography>
         </FlexBetween>
         <FlexBetween>
-          <Typography color={medium}>Impressions of your post</Typography>
-          <Typography color={main} fontWeight="500">
-            {typeof impressions === 'number' ? impressions : 0}
+          <Typography color={medium}>Impressions of your posts</Typography>
+          <Typography color={main} fontWeight="500" aria-label={`Total post impressions ${impressionsTotal ?? 0}`}>
+            {impressionsTotal ?? 0}
           </Typography>
         </FlexBetween>
       </Box>

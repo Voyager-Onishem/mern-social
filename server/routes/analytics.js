@@ -5,6 +5,8 @@ import {
   recordPostImpressions,
   getPostImpressionSummary,
   getProfileViewSummary,
+  getUserImpressionsSummary,
+  resetAllEngagementCounters,
 } from '../controllers/analytics.js';
 
 const router = express.Router();
@@ -14,5 +16,7 @@ router.post('/profile-view', verifyToken, recordProfileView);
 router.post('/post-impressions', verifyToken, recordPostImpressions);
 router.get('/post/:id/summary', verifyToken, getPostImpressionSummary);
 router.get('/profile/:id/summary', verifyToken, getProfileViewSummary);
+router.get('/user/:id/impressions', verifyToken, getUserImpressionsSummary);
+router.post('/reset-all', verifyToken, resetAllEngagementCounters);
 
 export default router;

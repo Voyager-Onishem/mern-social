@@ -73,3 +73,32 @@ export const getProfileViewSummary = async (req, res) => {
     return res.status(500).json({ message: err.message || 'Failed to fetch profile view summary' });
   }
 };
+
+// Aggregate total post impressions for a given user (sum of all their post.impressions)
+export const getUserImpressionsSummary = async (req, res) => {
+  try {
+    const { id } = req.params; // user id
+    const result = await Post.aggregate([
+      { $match: { userId: id } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ["$impressions", 0] } } } }
+    ]);
+    const total = result.length ? result[0].total : 0;
+    return res.status(200).json({ userId: id, impressionsTotal: total });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || 'Failed to aggregate impressions' });
+  }
+};
+
+// Development / maintenance endpoint: reset all counters (profile views & impressions)
+// WARNING: Not protected by role; only use in trusted environments.
+export const resetAllEngagementCounters = async (_req, res) => {
+  try {
+    await Promise.all([
+      User.updateMany({}, { $set: { profileViewsTotal: 0, viewedProfile: 0, impressions: 0 } }),
+      Post.updateMany({}, { $set: { impressions: 0 } })
+    ]);
+    return res.status(200).json({ status: 'ok', reset: true });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || 'Failed to reset counters' });
+  }
+};
