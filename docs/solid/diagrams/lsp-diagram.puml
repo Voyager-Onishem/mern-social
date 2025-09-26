@@ -1,0 +1,45 @@
+@startuml lsp-diagram
+!theme plain
+
+title Liskov Substitution Principle - MERN Social
+
+interface "Storage Provider" as StorageProvider {
+  +saveFile(file: File): string
+  +getFileUrl(id: string): string
+  +deleteFile(id: string): boolean
+}
+
+class "Disk Storage" as DiskStorage {
+  +saveFile(file: File): string
+  +getFileUrl(id: string): string
+  +deleteFile(id: string): boolean
+}
+
+class "GridFS Storage" as GridFSStorage {
+  +saveFile(file: File): string
+  +getFileUrl(id: string): string
+  +deleteFile(id: string): boolean
+}
+
+class "S3 Storage" as S3Storage {
+  +saveFile(file: File): string
+  +getFileUrl(id: string): string
+  +deleteFile(id: string): boolean
+}
+
+class "Post Service" as PostService {
+  -storageProvider: StorageProvider
+  +createPost(post: Post, file: File): Post
+}
+
+StorageProvider <|.. DiskStorage
+StorageProvider <|.. GridFSStorage
+StorageProvider <|.. S3Storage
+
+PostService --> StorageProvider
+
+note bottom of PostService: PostService can work with any\nstorage provider that fulfills\nthe interface contract
+
+note right of StorageProvider: All implementations must preserve\nthe contract semantics, not just\nmethod signatures
+
+@enduml

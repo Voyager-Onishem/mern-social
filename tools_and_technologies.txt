@@ -1,0 +1,216 @@
+Tools & Technologies Overview
+=============================
+
+Project: MERN Social Application
+Date Generated: 2025-09-26
+
+---------------------------------
+1. Application Architecture & Stack
+---------------------------------
+- Frontend: React 18 (CRA / react-scripts), Redux Toolkit, React Router v6, MUI (Material UI) + Emotion styling.
+- Backend: Node.js (Express.js), REST APIs + Server-Sent Events (SSE) for realtime feed updates.
+- Database: MongoDB (Mongoose ODM), GridFS (via gridfs-stream + multer-gridfs-storage) for media.
+- Build & Tooling: create-react-app scripts, Babel (implicit via CRA), Webpack (implicit), npm.
+- Authentication: JWT (jsonwebtoken), bcrypt password hashing.
+- State & Data Flow: Redux Toolkit slice (auth + mode + posts + impressions), optimistic UI updates.
+- Realtime: SSE endpoint (/realtime) with client EventSource subscription & coalesced dispatch.
+- Media Handling: multer for uploads, GridFS for storage, client drag-and-drop via react-dropzone, audio recording via MediaRecorder API (browser native), GIF embeds via URL detection (Giphy CDN).
+- Analytics (Phase 1): Non-unique profile views & post impressions counters (batched IntersectionObserver on client + bulkWrite on server).
+- Embed Security: Sanitized iframe embedding (YouTube/Vimeo) with sandbox + reduced allow list.
+- Testing:
+  * Frontend: Jest + React Testing Library (@testing-library/*), jsdom environment.
+  * Backend: Mocha + Chai + Supertest (configured in server package.json) + mongodb-memory-server (in-memory DB for tests).
+- Form Handling & Validation: Formik + Yup.
+- Theming & Accessibility: MUI theme switching (light/dark), ARIA labels on interactive icons.
+- Error Handling: Global ErrorBoundary (React), server try/catch per controller.
+
+---------------------------------
+2. Key NPM Dependencies (Frontend)
+---------------------------------
+@emotion/react, @emotion/styled  -> CSS-in-JS styling engine for MUI
+@mui/material, @mui/icons-material -> UI component library & icons
+@reduxjs/toolkit, react-redux  -> State management (slices, store)
+react, react-dom -> Core UI library and DOM renderer
+react-router-dom -> Client-side routing (v6)
+react-dropzone -> Drag & drop file uploads
+redux-persist -> (If used) state persistence layer
+formik -> Form state management
+yup -> Schema validation
+dotenv -> Env var access (build-time)
+@testing-library/react, @testing-library/jest-dom, @testing-library/user-event -> Testing utilities
+react-scripts -> CRA build/test/dev pipeline
+web-vitals -> Core Web Vitals measurement
+
+---------------------------------
+3. Key NPM Dependencies (Backend)
+---------------------------------
+bcrypt -> Password hashing
+body-parser -> Request body parsing (legacy; Express 4.18+ has built-in JSON)
+cors -> Cross-origin resource sharing middleware
+dotenv -> Environment variables
+express -> HTTP server framework
+gridfs-stream -> Stream interface for GridFS
+helmet -> Security headers
+jsonwebtoken -> JWT signing & verification
+mongoose -> MongoDB ODM
+morgan -> HTTP request logging
+multer -> Multipart/form-data handling
+multer-gridfs-storage -> GridFS-backed multer storage engine
+mongodb-memory-server -> Ephemeral Mongo for tests
+
+Dev/Test (Backend):
+mocha -> Test runner
+chai -> Assertions
+supertest -> HTTP endpoint testing
+cross-env -> Cross-platform environment variable setup
+
+---------------------------------
+4. Browser / Platform APIs Utilized
+---------------------------------
+- Fetch API (network requests)
+- EventSource (SSE realtime feed)
+- MediaRecorder (audio capture for voice messages)
+- Clipboard API & Web Share API (progressive sharing)
+- IntersectionObserver (post visibility/impression tracking)
+- LocalStorage (draft persistence)
+- URL.createObjectURL / URL.revokeObjectURL (media previews)
+
+---------------------------------
+5. Security & Hardening Measures
+---------------------------------
+- JWT-based auth with bearer tokens.
+- Password hashing (bcrypt) before persistence.
+- Helmet for HTTP security headers.
+- CORS configuration.
+- Sanitized iframe embeddings (YouTube/Vimeo whitelist, sandbox, referrerPolicy=no-referrer, restrictive allow list).
+- Multer + size/type validation (implied via accepted files) & configurable MAX_MEDIA_FILES.
+- ErrorBoundary to contain client crashes.
+- Removal / revocation of object URLs to avoid memory leaks.
+
+---------------------------------
+6. Performance & UX Techniques
+---------------------------------
+- Debounced batched impressions (300ms dwell + 800ms flush) to reduce request volume.
+- SSE event coalescing (250ms window) to limit re-render thrash.
+- Skeleton loaders: feed, comments, profile widget.
+- Optimistic comment/post interaction updates with rollback on failure.
+- Lazy loading (native loading="lazy" on iframes) and intersection-driven analytics.
+- Draft debounce (400ms) to minimize write churn to localStorage.
+
+---------------------------------
+7. Testing Strategy Highlights
+---------------------------------
+Frontend:
+- Component tests for PostWidget, MyPostWidget (draft restore), Comment (multi-GIF), share action (clipboard fallback), impressions batching (IntersectionObserver simulation).
+- Utility tests: video URL parsing, timeAgo, objectId, isGiphyUrl.
+Backend:
+- Mocha/Chai/Supertest pipeline (potential for expansion to cover analytics endpoints & auth flows).
+
+---------------------------------
+8. Build & Execution
+---------------------------------
+Frontend Commands:
+- npm start -> Dev server (CRA)
+- npm test  -> Jest test runner
+- npm build -> Production bundle
+
+Backend Commands:
+- npm run dev -> nodemon (if configured) development server
+- npm start   -> Production start (node index.js)
+- npm test    -> Mocha test suite (server)
+
+---------------------------------
+9. Architectural Patterns
+---------------------------------
+- Client: Smart containers (PostsWidget) + presentational widgets (PostWidget, Comment, etc.) with Redux for cross-cutting state.
+- Server: Route -> Controller -> Model layering.
+- Analytics: Phase 1 simple counters; future phases planned for unique event collections & TTL.
+- Embeds: Centralized sanitizer module with provider whitelist.
+- Realtime: SSE push with eventual WebSocket upgrade path.
+
+---------------------------------
+10. Future / Proposed Stack Enhancements
+---------------------------------
+- Redis (caching dedupe of impressions/profile views)
+- WebSockets (bidirectional presence & typing indicators)
+- Message Queue / Event Bus (for async analytics aggregation)
+- CDN-backed media & signed upload URLs
+- Service Worker / PWA (offline & push notifications)
+- Observability: Centralized logging + metrics (e.g., OpenTelemetry)
+- Rate limiting (express-rate-limit) & abuse detection heuristics
+
+---------------------------------
+11. Miscellaneous Supporting Utilities
+---------------------------------
+- timeAgo/objectId utilities for temporal display & ObjectId timestamp extraction.
+- Giphy URL detection & multiple GIF extraction (regex based).
+- sanitizeEmbed for safe iframe generation.
+
+---------------------------------
+12. Rationale Summary
+---------------------------------
+The stack balances developer velocity (CRA, Redux Toolkit, MUI) with incremental hardening (sandboxed embeds, SSE batching). Phase-based analytics avoids premature complexity while keeping a clear runway for uniqueness, aggregation, and performance scaling.
+
+
+
+
+======================================================
+SHORT versionFrontend:
+
+react, react-dom, react-router-dom (v6)
+@reduxjs/toolkit, react-redux, redux-persist
+@mui/material, @mui/icons-material, @emotion/react, @emotion/styled
+formik, yup
+react-dropzone
+web-vitals
+Backend:
+
+node.js, express
+mongoose (MongoDB), GridFS (gridfs-stream, multer-gridfs-storage, multer)
+bcrypt, jsonwebtoken
+cors, helmet, morgan, body-parser (legacy), dotenv
+Testing:
+
+jest, @testing-library/react, @testing-library/jest-dom, @testing-library/user-event
+mocha, chai, supertest
+mongodb-memory-server
+cross-env
+Build / Tooling:
+
+react-scripts (CRA pipeline: webpack + babel implicit)
+npm
+Realtime / Analytics:
+
+Server-Sent Events (EventSource)
+IntersectionObserver (impressions)
+MongoDB bulkWrite
+Media & Embeds:
+
+MediaRecorder API (audio)
+URL.createObjectURL / revokeObjectURL
+Giphy (CDN links)
+Custom iframe sanitizer (YouTube/Vimeo whitelist)
+Security:
+
+helmet
+JWT auth (jsonwebtoken)
+bcrypt password hashing
+CORS configuration
+Sandboxed iframes + restricted allow list
+Browser / Platform APIs:
+
+fetch
+EventSource
+IntersectionObserver
+MediaRecorder
+Clipboard API (fallback logic)
+LocalStorage
+URL API
+Utilities (custom or lightweight):
+
+timeAgo
+objectId timestamp extraction
+isGiphyUrl
+sanitizeEmbed
+video embed parser
+-- End of Document --

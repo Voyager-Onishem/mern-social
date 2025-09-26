@@ -1,0 +1,38 @@
+@startuml ocp-diagram
+!theme plain
+
+title Open/Closed Principle - MERN Social
+
+interface "Video Embed Handler" as EmbedHandler {
+  +handleUrl(url: string): EmbedResult
+}
+
+class "YouTube Handler" as YouTubeHandler {
+  +handleUrl(url: string): EmbedResult
+}
+
+class "Vimeo Handler" as VimeoHandler {
+  +handleUrl(url: string): EmbedResult
+}
+
+class "Future Provider Handler" as FutureHandler {
+  +handleUrl(url: string): EmbedResult
+}
+
+class "Embed Service" as EmbedService {
+  -providers: Map<string, EmbedHandler>
+  +registerProvider(name: string, handler: EmbedHandler)
+  +getEmbedFromUrl(url: string): EmbedResult
+}
+
+EmbedHandler <|.. YouTubeHandler
+EmbedHandler <|.. VimeoHandler
+EmbedHandler <|.. FutureHandler
+
+EmbedService --> EmbedHandler
+
+note bottom of EmbedService: Open for extension:\nNew handlers can be registered\nwithout modifying the service
+
+note right of FutureHandler: New providers can be added\nwithout changing existing code
+
+@enduml

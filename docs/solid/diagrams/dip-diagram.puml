@@ -1,0 +1,48 @@
+@startuml dip-diagram
+!theme plain
+
+title Dependency Inversion Principle - MERN Social
+
+' Bad approach
+class "PostsWidget" as BadPostsWidget {
+  +fetchPosts()
+  +recordImpressions()
+}
+
+class "API Client" as DirectAPIClient {
+  +get(url: string)
+  +post(url: string, data: object)
+}
+
+BadPostsWidget --> DirectAPIClient : Depends directly
+
+note bottom of BadPostsWidget: High-level component\ndepends on low-level\nAPI client implementation
+
+' Good approach
+class "PostsWidget" as GoodPostsWidget {
+  +fetchPosts()
+  +recordImpressions()
+}
+
+interface "PostService" as PostService {
+  +getPosts(): Post[]
+  +recordImpression(postId: string): void
+}
+
+class "REST API Post Service" as RESTPostService {
+  +getPosts(): Post[]
+  +recordImpression(postId: string): void
+}
+
+class "Mock Post Service" as MockPostService {
+  +getPosts(): Post[]
+  +recordImpression(postId: string): void
+}
+
+GoodPostsWidget --> PostService : Depends on abstraction
+PostService <|.. RESTPostService
+PostService <|.. MockPostService
+
+note bottom of GoodPostsWidget: High-level component depends\non abstraction, not implementation
+
+@enduml

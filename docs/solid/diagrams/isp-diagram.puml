@@ -1,0 +1,58 @@
+@startuml isp-diagram
+!theme plain
+
+title Interface Segregation Principle - MERN Social
+
+' Bad approach
+interface "Large Media Service" as LargeMediaService {
+  +uploadMedia(file: File)
+  +processImage(image: Image)
+  +processVideo(video: Video)
+  +processAudio(audio: Audio)
+  +generateThumbnail(media: Media)
+  +storeMedia(media: Media)
+  +getMediaUrl(id: string)
+}
+
+class "Image Client" as BadImageClient {
+  +useMediaService(service: LargeMediaService)
+}
+
+note bottom of BadImageClient: Forced to depend on video\nand audio methods it doesn't use
+
+' Good approach
+interface "MediaUploader" as MediaUploader {
+  +uploadMedia(file: File)
+  +getMediaUrl(id: string)
+}
+
+interface "ImageProcessor" as ImageProcessor {
+  +processImage(image: Image)
+  +generateThumbnail(image: Image)
+}
+
+interface "VideoProcessor" as VideoProcessor {
+  +processVideo(video: Video)
+  +generateThumbnail(video: Video)
+}
+
+interface "AudioProcessor" as AudioProcessor {
+  +processAudio(audio: Audio)
+}
+
+class "Image Client" as GoodImageClient {
+  +useImageServices(uploader: MediaUploader, processor: ImageProcessor)
+}
+
+class "Video Client" as VideoClient {
+  +useVideoServices(uploader: MediaUploader, processor: VideoProcessor)
+}
+
+GoodImageClient --> MediaUploader
+GoodImageClient --> ImageProcessor
+VideoClient --> MediaUploader
+VideoClient --> VideoProcessor
+
+note bottom of GoodImageClient: Only depends on the\ninterfaces it needs
+
+@enduml

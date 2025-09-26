@@ -1,0 +1,35 @@
+@startuml srp-diagram
+!theme plain
+
+title Single Responsibility Principle - MERN Social
+
+package "Controllers Layer" {
+  [auth.js] as AuthController #LightGreen
+  [posts.js] as PostsController #LightGreen
+  [users.js] as UsersController #LightGreen
+}
+
+package "Models Layer" {
+  [User.js] as UserModel #LightBlue
+  [Post.js] as PostModel #LightBlue
+}
+
+package "Utilities" {
+  [sanitizeEmbed.js] as SanitizeUtil #Orange
+  [timeAgo.js] as TimeAgoUtil #Orange
+  [isGiphyUrl.js] as GiphyUtil #Orange
+}
+
+note right of AuthController: Responsible only for\nauthentication and\nauthorization
+
+note right of PostsController: Manages only post\ncreation, retrieval,\nupdates, and deletion
+
+note right of UsersController: Handles only user\nprofile operations
+
+note bottom of SanitizeUtil: Single responsibility:\nSanitize embedded content
+
+note bottom of TimeAgoUtil: Single responsibility:\nFormat timestamps
+
+note bottom of GiphyUtil: Single responsibility:\nDetect Giphy URLs
+
+@enduml
