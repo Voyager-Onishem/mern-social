@@ -1,5 +1,6 @@
 import Post from "../models/Post.js";
 import User from "../models/User.js";
+import { realtimeBus } from '../index.js';
 
 // Helper to normalize a Post document/plain object for JSON responses
 function serializePost(p) {
@@ -45,6 +46,7 @@ export const addComment = async (req, res) => {
     );
     if (!updatedPost) return res.status(404).json({ message: "Post not found" });
     res.status(200).json(serializePost(updatedPost));
+    realtimeBus.emit('broadcast', { type: 'comment:add', postId: id, post: serializePost(updatedPost) });
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
@@ -64,6 +66,7 @@ export const editComment = async (req, res) => {
     comment.editedAt = new Date();
     await post.save();
     return res.status(200).json(serializePost(post));
+    realtimeBus.emit('broadcast', { type: 'comment:edit', postId: id, post: serializePost(post) });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -82,6 +85,7 @@ export const deleteComment = async (req, res) => {
     post.comments.splice(commentIndex, 1);
     await post.save();
     return res.status(200).json(serializePost(post));
+    realtimeBus.emit('broadcast', { type: 'comment:delete', postId: id, post: serializePost(post) });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -140,6 +144,8 @@ export const createPost = async (req, res) => {
     await newPost.save();
     const posts = await Post.find();
     const serialized = posts.map(p => serializePost(p));
+    // Broadcast only the single new post to avoid large payloads
+    realtimeBus.emit('broadcast', { type: 'post:new', post: serializePost(newPost) });
     return res.status(201).json(serialized);
   } catch (err) {
   console.error('createPost error:', err);
@@ -192,7 +198,9 @@ export const likePost = async (req, res) => {
     post.likes = likesObj;
     await post.save();
     const fresh = await Post.findById(id);
-    return res.status(200).json(serializePost(fresh));
+    const serialized = serializePost(fresh);
+    res.status(200).json(serialized);
+    realtimeBus.emit('broadcast', { type: 'post:like', postId: id, post: serialized });
   } catch (err) {
     console.error('likePost error:', err);
     const status = err.status || 500;

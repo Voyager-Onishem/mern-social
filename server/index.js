@@ -18,6 +18,10 @@ import { verifyToken } from "./middleware/auth.js";
 import User from "./models/User.js";
 import Post from "./models/Post.js";
 import { users, posts } from "./data/index.js";
+import { EventEmitter } from 'events';
+
+// Simple event bus for real-time notifications (SSE broadcast)
+export const realtimeBus = new EventEmitter();
 
 /* CONFIGURATIONS */
 const __filename = fileURLToPath(import.meta.url);
@@ -94,6 +98,27 @@ app.post(
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/posts", postRoutes);
+
+// SSE endpoint for real-time updates
+app.get('/realtime', verifyToken, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+  const onEvent = (payload) => {
+    try {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch (e) {
+      // client likely disconnected
+    }
+  };
+  realtimeBus.on('broadcast', onEvent);
+  // Initial ping to keep some proxies open
+  res.write('data: {"type":"ping"}\n\n');
+  req.on('close', () => {
+    realtimeBus.off('broadcast', onEvent);
+  });
+});
 
 // Multer/Upload error handler
 app.use((err, req, res, next) => {
