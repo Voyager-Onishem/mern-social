@@ -10,7 +10,7 @@ import FlexBetween from "components/FlexBetween";
 import WidgetWrapper from "components/WidgetWrapper";
 import { useSelector, useDispatch } from "react-redux";
 import { setLogin, setUserProfileViewsTotal } from "state";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -36,6 +36,8 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
   const dark = palette.neutral.dark;
   const medium = palette.neutral.medium;
   const main = palette.neutral.main;
+  // Prevent duplicate profile view recordings while staying on same profile
+  const profileViewRecordedRef = useRef(false);
 
   const getUser = async () => {
     const response = await fetch(`${API_URL}/users/${userId}`, {
@@ -52,7 +54,10 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
     // Record a profile view (Feature 26 Phase 1) once user data present & not own profile
     useEffect(() => {
       if (!user || !token) return;
-      if (loggedUser?._id === userId) return; // skip self
+      if (loggedUser?._id === userId) return; // skip self views
+      // Fire only once per profileId until unmounted or userId changes
+      if (profileViewRecordedRef.current) return;
+      profileViewRecordedRef.current = true; // lock before async to avoid rapid double fire
       let aborted = false;
       (async () => {
         try {
@@ -68,11 +73,16 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
             setUser(prev => prev ? { ...prev, profileViewsTotal: data.profileViewsTotal } : prev);
           }
         } catch {
-          // silent fail (non-critical)
+          // On failure we could allow retry by resetting ref, but for now keep it locked to avoid inflation
         }
       })();
       return () => { aborted = true; };
     }, [user, token, userId, loggedUser, dispatch]);
+
+    // Reset the guard if navigating to a different profile id
+    useEffect(() => {
+      profileViewRecordedRef.current = false;
+    }, [userId]);
 
   const isOwnProfile = loggedUser?._id === userId;
 
