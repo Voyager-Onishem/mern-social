@@ -3,6 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PostWidget from '../PostWidget';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { MemoryRouter } from 'react-router-dom';
+import { themeSettings } from 'theme';
 import reducer, { setLogin, setPosts } from 'state';
 
 // Minimal store with required slices/shape
@@ -14,6 +17,7 @@ describe('Share action', () => {
   beforeEach(() => {
     // Clear any mocks
     delete navigator.share;
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true });
     navigator.clipboard = { writeText: jest.fn().mockResolvedValue() };
   });
 
@@ -23,32 +27,35 @@ describe('Share action', () => {
   store.dispatch(setLogin({ user: { _id: 'u1', friends: [] }, token: 'TEST_TOKEN' }));
   store.dispatch(setPosts({ posts: [] }));
     const likes = {}; // no likes
+    const theme = createTheme(themeSettings('light'));
     render(
       <Provider store={store}>
-        <PostWidget
-          postId={'abc123abc123abc123abc123'}
-          postUserId={'u1'}
-          name={'Alice'}
-          description={'A sample description for sharing'}
-          location={''}
-          picturePath={''}
-          audioPath={''}
-          userPicturePath={''}
-          likes={likes}
-          comments={[]}
-          createdAt={Date.now()}
-        />
+        <MemoryRouter>
+          <ThemeProvider theme={theme}>
+            <PostWidget
+              postId={'abc123abc123abc123abc123'}
+              postUserId={'u1'}
+              name={'Alice'}
+              description={'A sample description for sharing'}
+              location={''}
+              picturePath={''}
+              audioPath={''}
+              userPicturePath={''}
+              likes={likes}
+              comments={[]}
+              createdAt={Date.now()}
+              impressions={0}
+            />
+          </ThemeProvider>
+        </MemoryRouter>
       </Provider>
     );
 
     const shareBtn = screen.getByLabelText(/share post/i);
     fireEvent.click(shareBtn);
-
-    await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
-    });
-
-    // Snackbar message should appear
-    expect(await screen.findByText(/link copied/i)).toBeInTheDocument();
+    // Snackbar message should appear which implies clipboard fallback path executed
+    const msg = await screen.findByText(/link copied/i, {}, { timeout: 3000 });
+    expect(msg).toBeInTheDocument();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
   });
 });
