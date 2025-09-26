@@ -41,9 +41,11 @@ const Comment = ({
             {username}
           </Typography>
           {displayDate && (
-            <Typography variant="caption" color="text.secondary">
-              {displayDate}{editedAt ? ' (edited)' : ''}
-            </Typography>
+            <Tooltip title={editedAt ? `Edited ${timeAgo(editedAt)} (original ${displayDate})` : `Posted ${displayDate}`} arrow>
+              <Typography variant="caption" color="text.secondary" aria-label={editedAt ? `Edited comment, last edit ${timeAgo(editedAt)}` : `Comment posted ${displayDate}`}>
+                {displayDate}{editedAt ? ' (edited)' : ''}
+              </Typography>
+            </Tooltip>
           )}
         </Box>
         {isEditing ? (
@@ -94,12 +96,12 @@ const Comment = ({
       {canEdit && !isEditing && (
         <Box display="flex" alignItems="center" gap={0.5}>
           <Tooltip title="Edit" arrow>
-            <IconButton size="small" onClick={() => onStartEdit && onStartEdit(commentId, text)}>
+            <IconButton size="small" onClick={() => onStartEdit && onStartEdit(commentId, text)} aria-label="Edit comment">
               <EditOutlined fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete" arrow>
-            <IconButton size="small" onClick={() => onDelete && onDelete(commentId)} color="error">
+            <IconButton size="small" onClick={() => onDelete && onDelete(commentId)} color="error" aria-label="Delete comment">
               <DeleteOutline fontSize="small" />
             </IconButton>
           </Tooltip>

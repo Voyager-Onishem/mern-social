@@ -108,7 +108,7 @@ const Navbar = () => {
                 Post
               </Button>
             )}
-            <IconButton onClick={() => dispatch(setMode())}>
+            <IconButton onClick={() => dispatch(setMode())} aria-label={theme.palette.mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               {theme.palette.mode === "dark" ? (
                 <DarkMode sx={{ fontSize: "25px" }} />
               ) : (
@@ -147,6 +147,7 @@ const Navbar = () => {
       ) : (
         <IconButton
           onClick={() => setIsMobileMenuToggled(!isMobileMenuToggled)}
+          aria-label={isMobileMenuToggled ? 'Close menu' : 'Open menu'}
         >
           <Menu />
         </IconButton>
@@ -168,6 +169,7 @@ const Navbar = () => {
           <Box display="flex" justifyContent="flex-end" p="1rem">
             <IconButton
               onClick={() => setIsMobileMenuToggled(!isMobileMenuToggled)}
+              aria-label="Close navigation menu"
             >
               <Close />
             </IconButton>
@@ -184,6 +186,7 @@ const Navbar = () => {
             <IconButton
               onClick={() => dispatch(setMode())}
               sx={{ fontSize: "25px" }}
+              aria-label={theme.palette.mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme.palette.mode === "dark" ? (
                 <DarkMode sx={{ fontSize: "25px" }} />

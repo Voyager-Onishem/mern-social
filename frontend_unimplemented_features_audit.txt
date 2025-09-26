@@ -78,8 +78,12 @@ Scope: Entire React client under `client/src`.
             h. Upgrade path to WebSocket for bidirectional features (back-pressure, acknowledgements, presence updates).
             i. Client-side dedupe / version checks (ignore stale events if out-of-order delivery happens).
             j. Metrics & monitoring (count active connections, log disconnect reasons, alert on abnormal churn).
-19. Error boundaries
-    - No <ErrorBoundary>; iframe/media errors could cascade.
+19. Error boundaries (IMPLEMENTED)
+    - Global <ErrorBoundary> now wraps the routed application (added 2025-09-26) to prevent cascade failures.
+    - Optional Enhancements (not yet implemented):
+        a. Per-widget granular boundaries around high-risk components (e.g., PostWidget, MyPostWidget, GiphyPicker) to isolate failures without losing the whole view.
+        b. Remote error logging: POST captured error + componentStack to a backend /logs/client-error endpoint (with rate limiting & redaction for PII) for observability.
+        c. Production-friendly minimal fallback UI (hide stack trace) with environment-based detail toggle; developer mode shows stack.
 20. Test coverage
     - Core components (MyPostWidget/PostWidget/GiphyPicker/audio controls) untested. Only utility + trivial App test present.
 21. Service worker/PWA
@@ -182,7 +186,7 @@ Scope: Entire React client under `client/src`.
 4. Security / Resilience Gaps (Unaddressed Features)
 - No rate limiting/spam deterrent (client-side throttling).
 - No CSRF defense beyond bearer token (acceptable for SPA, note only).
-- No rich error logging or central error boundary.
+- No remote error logging service; (global error boundary now present but not integrated with monitoring).
 - External embed allowances depend on helper; need whitelist review.
 
 5. Quick Win Recommendations (Updated)
@@ -193,7 +197,7 @@ F. Optimistic comment update & rollback pattern.
 G. Configurable MAX_MEDIA_FILES via env & enforce on server.
 H. Tooltip with edited timestamp for edited comments.
 I. Add explicit remove-embed button when auto-detected media is present.
-J. Introduce ErrorBoundary component.
+J. (DONE) Introduced global ErrorBoundary; consider granular boundaries & logging (see Feature 19 optional enhancements).
  K. SSE heartbeat & reconnect backoff (convert 18.a & 18.b into short-term actionable items).
  L. Polling fallback for SSE failures (18.d).
  M. Batch/coalesce rapid SSE events (18.g) to reduce render thrash.

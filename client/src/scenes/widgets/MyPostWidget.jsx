@@ -325,7 +325,7 @@ const MyPostWidget = ({ picturePath }) => {
       {/* Recording popup */}
       {isRecording && (
         <Box mt={1} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, border: `1px solid ${medium}`, borderRadius: 1, background: palette.neutral.light }}>
-          <canvas ref={canvasRef} width={300} height={48} style={{ width: '100%', height: 48, background: 'transparent' }} />
+          <canvas ref={canvasRef} width={300} height={48} style={{ width: '100%', height: 48, background: 'transparent' }} aria-label="Live waveform visualization of your recording" role="img" />
           <Typography sx={{ minWidth: 64, textAlign: 'right' }}>
             {String(Math.floor(recordSecs/60)).padStart(2,'0')}:{String(recordSecs%60).padStart(2,'0')}
           </Typography>

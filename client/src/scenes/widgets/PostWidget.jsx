@@ -312,7 +312,7 @@ const PostWidget = ({
       <FlexBetween mt="0.25rem">
         <FlexBetween gap="1rem">
           <FlexBetween gap="0.3rem">
-            <IconButton onClick={patchLike}>
+            <IconButton onClick={patchLike} aria-label={isLiked ? 'Unlike post' : 'Like post'}>
               {isLiked ? (
                 <FavoriteOutlined sx={{ color: primary }} />
               ) : (
@@ -323,7 +323,7 @@ const PostWidget = ({
           </FlexBetween>
 
           <FlexBetween gap="0.3rem">
-            <IconButton onClick={handleToggleComments}>
+            <IconButton onClick={handleToggleComments} aria-label={isComments ? 'Hide comments' : 'Show comments'}>
               <ChatBubbleOutlineOutlined />
             </IconButton>
             <Typography>{currentComments.length}</Typography>
