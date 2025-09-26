@@ -170,11 +170,9 @@ export const getFeedPosts = async (req, res) => {
 export const getUserPosts = async (req, res) => {
   try {
     const { userId } = req.params;
-    const post = await Post.find({ userId });
-    res.status(200).json(post.map(p => ({
-      ...p.toObject(),
-      mediaPaths: (p.mediaPaths && p.mediaPaths.length) ? p.mediaPaths : (p.picturePath ? [p.picturePath] : []),
-    })));
+    const posts = await Post.find({ userId });
+    // Reuse serializePost to ensure likes Map converted & mediaPaths normalized
+    res.status(200).json(posts.map(p => serializePost(p)));
   } catch (err) {
     res.status(404).json({ message: err.message });
   }

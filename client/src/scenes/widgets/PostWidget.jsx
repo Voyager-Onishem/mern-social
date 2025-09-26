@@ -58,8 +58,15 @@ const PostWidget = ({
   const dispatch = useDispatch();
   const token = useSelector((state) => state.token);
   const loggedInUserId = useSelector((state) => state.user._id);
-  const isLiked = Boolean(likes[loggedInUserId]);
-  const likeCount = Object.keys(likes).length;
+  // Normalize likes in case backend sent a Map or null
+  const normalizedLikes = (() => {
+    if (!likes) return {};
+    if (likes instanceof Map) return Object.fromEntries(likes);
+    if (typeof likes === 'object') return likes;
+    return {};
+  })();
+  const isLiked = Boolean(normalizedLikes[loggedInUserId]);
+  const likeCount = Object.keys(normalizedLikes).length;
   const MAX_COMMENT_CHARS = 300;
 
   const { palette } = useTheme();
