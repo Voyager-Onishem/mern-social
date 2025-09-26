@@ -51,8 +51,10 @@ Scope: Entire React client under `client/src`.
     - Future: externalize limits to config/env and add remaining field-specific validations (e.g., social links, role length).
 13. Shareable deep links
     - No dedicated `/post/:id` route; cannot open a single post in isolation.
-14. Draft persistence
-    - Abandoning the composer loses text/media; no local storage.
+14. Draft persistence (IMPLEMENTED - TEXT + META)
+    - Post composer now saves draft (text + media file names + audio presence flag) to localStorage per user with debounce (400ms).
+    - Restores on mount (single restore notification). Clear Draft option added.
+    - Not persisting binary data (media/audio) to avoid storage bloat; future enhancement could inline small base64.
 15. Media labeling
     - Audio posts labeled generically ("Voice message"); no duration length surface.
 16. Theme toggle UI

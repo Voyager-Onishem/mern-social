@@ -30,6 +30,8 @@ const MyPostWidget = ({ picturePath }) => {
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState("");
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const [restoredDraft, setRestoredDraft] = useState(false);
+  const draftSaveTimeoutRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioElRef = useRef(null);
@@ -50,6 +52,7 @@ const MyPostWidget = ({ picturePath }) => {
   const medium = palette.neutral.medium;
   // Input length limits (could be externalized later)
   const MAX_POST_CHARS = 500;
+  const DRAFT_KEY = `post_draft_${_id}`;
 
   const handlePost = async () => {
     setSubmitError("");
@@ -99,6 +102,8 @@ const MyPostWidget = ({ picturePath }) => {
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       setAudioBlob(null);
       setAudioUrl("");
+      // Clear stored draft
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
     } catch (e) {
       setSubmitError("Cannot reach server. Please try again.");
     }
@@ -222,6 +227,46 @@ const MyPostWidget = ({ picturePath }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load draft on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.text === 'string' && parsed.text.trim()) {
+          setPost((prev) => prev || parsed.text);
+          setRestoredDraft(true);
+          notify('Draft restored', { severity: 'info' });
+        }
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save draft (debounced)
+  useEffect(() => {
+    if (draftSaveTimeoutRef.current) clearTimeout(draftSaveTimeoutRef.current);
+    draftSaveTimeoutRef.current = setTimeout(() => {
+      try {
+        if ((!post.trim() && mediaFiles.length === 0 && !audioBlob)) {
+          localStorage.removeItem(DRAFT_KEY);
+          return;
+        }
+        const payload = {
+          text: post,
+          mediaNames: mediaFiles.map(f => f.name),
+          hasAudio: !!audioBlob,
+          ts: Date.now(),
+          v: 1,
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+      } catch {}
+    }, 400); // debounce 400ms
+    return () => {
+      if (draftSaveTimeoutRef.current) clearTimeout(draftSaveTimeoutRef.current);
+    };
+  }, [post, mediaFiles, audioBlob]);
+
   // Start drawing waveform after the recording UI and analyser are ready
   useEffect(() => {
     if (isRecording) {
@@ -270,6 +315,11 @@ const MyPostWidget = ({ picturePath }) => {
           >
             {post.length}/{MAX_POST_CHARS}
           </Typography>
+          {restoredDraft && (
+            <Typography variant="caption" sx={{ position: 'absolute', top: 6, right: 16, color: medium }}>
+              Draft
+            </Typography>
+          )}
         </Box>
       </FlexBetween>
       {/* Recording popup */}
@@ -514,6 +564,29 @@ const MyPostWidget = ({ picturePath }) => {
           label="Post"
         />
       </FlexBetween>
+
+      { (post.trim() || mediaFiles.length > 0 || audioBlob) && (
+        <Box mt={1} display="flex" justifyContent="flex-end">
+          <Typography
+            variant="caption"
+            sx={{ cursor: 'pointer', color: palette.primary.main, '&:hover': { textDecoration: 'underline' } }}
+            onClick={() => {
+              setPost('');
+              mediaFiles.forEach(f=>{ if (f.__previewUrl) { try { URL.revokeObjectURL(f.__previewUrl); } catch {} } });
+              setMediaFiles([]);
+              if (audioUrl) { try { URL.revokeObjectURL(audioUrl); } catch {} }
+              setAudioBlob(null);
+              setAudioUrl('');
+              setRestoredDraft(false);
+              try { localStorage.removeItem(DRAFT_KEY); } catch {}
+              notify('Draft cleared', { severity: 'info' });
+            }}
+            aria-label="Clear draft"
+          >
+            Clear Draft
+          </Typography>
+        </Box>
+      ) }
 
       <GiphyPicker
         open={giphyOpen}
