@@ -70,6 +70,9 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   const observerRef = useRef(null);
   const pendingRef = useRef({});
   const timeoutRef = useRef(null);
+  const sessionSeenPostIds = useSelector(state => state.sessionSeenPostIds);
+  const seenRef = useRef(sessionSeenPostIds);
+  useEffect(() => { seenRef.current = sessionSeenPostIds; }, [sessionSeenPostIds]);
 
   useEffect(() => {
     if (!token) return;
@@ -122,8 +125,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
               const stillVisible = visibilityMap.get(id)?.visible;
               if (stillVisible) {
                 // Ensure not already seen this session
-                const state = window.__APP_STORE__?.getState?.();
-                const seen = state?.sessionSeenPostIds?.[id];
+                const seen = seenRef.current?.[id];
                 if (!seen && !pendingRef.current[id]) {
                   pendingRef.current[id] = true;
                   scheduleFlush();
@@ -159,7 +161,9 @@ const PostsWidget = ({ userId, isProfile = false }) => {
     return () => {
       if (observerRef.current) observerRef.current.disconnect();
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      Object.values(visibilityMap).forEach(v => v?.timer && clearTimeout(v.timer));
+      for (const rec of visibilityMap.values()) {
+        if (rec?.timer) clearTimeout(rec.timer);
+      }
     };
   }, [posts, token, dispatch]);
 

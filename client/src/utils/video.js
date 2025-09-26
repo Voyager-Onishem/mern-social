@@ -1,4 +1,5 @@
 // Detects if text contains a video URL and returns metadata
+import { sanitizeIframeSrc, SAFE_IFRAME_ATTRS } from './sanitizeEmbed';
 
 const YT_REGEX = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/i;
 const VIMEO_REGEX = /https?:\/\/(?:www\.)?vimeo\.com\/(\d+)/i;
@@ -21,7 +22,6 @@ export function extractFirstVideo(text) {
   return null;
 }
 
-import { sanitizeIframeSrc, SAFE_IFRAME_ATTRS } from './sanitizeEmbed';
 
 export function getEmbedForVideo(meta) {
   if (!meta) return null;

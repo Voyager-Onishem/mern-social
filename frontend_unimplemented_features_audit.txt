@@ -58,8 +58,8 @@ Scope: Entire React client under `client/src`.
     - Not persisting binary data (media/audio) to avoid storage bloat; future enhancement could inline small base64.
 15. Media labeling
     - Audio posts labeled generically ("Voice message"); no duration length surface.
-16. Theme toggle UI
-    - Theme infrastructure present; no visible toggle control.
+16. Theme toggle UI (DONE)
+    - Implemented via navbar `IconButton` (light/dark) dispatching `setMode()`; accessible aria-label updates based on current mode.
 17. Friend add/remove
     - Not verified in scanned code; if absent, friend list is read-only.
 18. Real-time updates (PARTIAL)
@@ -277,7 +277,7 @@ J. (DONE) Introduced global ErrorBoundary; consider granular boundaries & loggin
 | Multi-media posts | Missing |
 | GIF in comments display | Partial |
 | Location editing | Implemented |
-| Theme toggle UI | Missing |
+| Theme toggle UI | Implemented |
 | Pagination | Missing |
 | Real-time updates | Missing |
 | Error feedback (like/comment) | Partial |

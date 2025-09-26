@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Post from '../models/Post.js';
+import mongoose from 'mongoose';
 
 // Phase 1 (Feature 26): minimal analytics endpoints.
 // Non-unique counters only. Lightweight and idempotent-ish with basic guardrails.
@@ -33,19 +34,24 @@ export const recordPostImpressions = async (req, res) => {
     }
     const viewerId = req.user?.id;
     if (!viewerId) return res.status(401).json({ message: 'Unauthorized' });
-
     // Phase 1: naive increment for each provided post ID.
-    // We ignore invalid IDs silently to keep the endpoint resilient.
-    const ops = postIds.map(id => ({
+    // Defensive: filter out clearly invalid ObjectIds (previously could trigger CastError despite comment to "ignore").
+    const validIds = postIds.filter(id => typeof id === 'string' && mongoose.Types.ObjectId.isValid(id));
+    if (!validIds.length) {
+      return res.status(200).json({ impressions: [] }); // nothing valid; treat as no-op
+    }
+    const ops = validIds.map(id => ({
       updateOne: {
         filter: { _id: id },
         update: { $inc: { impressions: 1 } }
       }
     }));
-    await Post.bulkWrite(ops, { ordered: false });
+    if (ops.length) {
+      await Post.bulkWrite(ops, { ordered: false });
+    }
 
     // Fetch current counts for the requested posts (only those that exist)
-    const posts = await Post.find({ _id: { $in: postIds } }).select('_id impressions');
+    const posts = await Post.find({ _id: { $in: validIds } }).select('_id impressions');
     return res.status(200).json({ impressions: posts.map(p => ({ postId: p._id, impressions: p.impressions })) });
   } catch (err) {
     return res.status(500).json({ message: err.message || 'Failed to record impressions' });
