@@ -30,8 +30,8 @@ Scope: Entire React client under `client/src`.
    - Cannot edit or delete existing comments. Only append new.
 3. Multiple media per post (DONE)
    - Only one file allowed (image OR video OR audio). No gallery/carousel support.
-4. GIF rendering inside comments
-   - GIF URLs can be inserted, but comment renderer does not convert them to <img>; likely displayed as plain text.
+4. GIF rendering inside comments (IMPLEMENTED 2025-09-26)
+    - Comment renderer now detects and displays all Giphy URLs as inline GIF images (lazy-loaded). Remaining text shown separately; multiple GIFs supported.
 5. Removing detected embeds
    - Auto video/GIF detection in post text has no explicit UI to remove aside from manually deleting URL.
 6. Location editing (DONE)
