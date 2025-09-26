@@ -6,7 +6,7 @@ import {
   GifBoxOutlined,
   Close,
 } from "@mui/icons-material";
-import { Box, Divider, IconButton, Typography, useTheme, Snackbar, Tooltip, Alert } from "@mui/material";
+import { Box, Divider, IconButton, Typography, useTheme, Snackbar, Tooltip, Alert, Skeleton } from "@mui/material";
 import Comment from "components/Comment";
 import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
@@ -377,9 +377,17 @@ const PostWidget = ({
       {isComments && (
         <Box mt="0.5rem">
           {loadingComments ? (
-            <Typography sx={{ color: main, m: "0.5rem 0", pl: "1rem" }}>
-              Loading comments...
-            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column-reverse', mb: 1 }}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, p: '0.5rem 0' }}>
+                  <Skeleton variant="circular" width={32} height={32} />
+                  <Box sx={{ flex: 1 }}>
+                    <Skeleton variant="text" width={120} height={16} />
+                    <Skeleton variant="text" width="90%" height={18} />
+                  </Box>
+                </Box>
+              ))}
+            </Box>
           ) : (
             <>
               <Box

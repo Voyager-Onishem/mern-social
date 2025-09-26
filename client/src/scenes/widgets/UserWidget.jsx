@@ -4,7 +4,7 @@ import {
   LocationOnOutlined,
   WorkOutlineOutlined,
 } from "@mui/icons-material";
-import { Box, Typography, Divider, useTheme, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Snackbar, Alert, Tooltip, Avatar } from "@mui/material";
+import { Box, Typography, Divider, useTheme, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Snackbar, Alert, Tooltip, Avatar, Skeleton } from "@mui/material";
 import UserImage from "components/UserImage";
 import FlexBetween from "components/FlexBetween";
 import WidgetWrapper from "components/WidgetWrapper";
@@ -181,7 +181,35 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
   };
 
   if (!user) {
-    return null;
+    return (
+      <WidgetWrapper>
+        <Box display="flex" gap={1.5} pb={2}>
+          <Skeleton variant="circular" width={56} height={56} />
+          <Box flex={1}>
+            <Skeleton variant="text" width={140} height={28} />
+            <Skeleton variant="text" width={80} height={20} />
+          </Box>
+        </Box>
+        <Divider />
+        <Box py={2}>
+          <Skeleton variant="text" width={180} height={20} />
+          <Skeleton variant="text" width={160} height={20} />
+        </Box>
+        <Divider />
+        <Box py={2}>
+          <Skeleton variant="text" width={190} height={20} />
+          <Skeleton variant="text" width={190} height={20} />
+        </Box>
+        <Divider />
+        <Box py={2}>
+          <Skeleton variant="text" width={150} height={24} />
+          <Box mt={1} display="flex" flexDirection="column" gap={1}>
+            <Skeleton variant="rectangular" height={32} width="100%" sx={{ borderRadius: 1 }} />
+            <Skeleton variant="rectangular" height={32} width="100%" sx={{ borderRadius: 1 }} />
+          </Box>
+        </Box>
+      </WidgetWrapper>
+    );
   }
 
   const {

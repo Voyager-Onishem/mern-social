@@ -5,22 +5,22 @@ Generated: 2025-09-25
 Scope: Entire React client under `client/src`.
 
 1. Implemented (Baseline + New)
-- Auth routing with `RequireAuth` for /home and /profile/:userId.
-- Post creation: text + media (multi-image/video up to 5) + audio recording (voice message) + GIF URL embedding + external video URL embedding.
-- Multi-media persistence via `mediaPaths` with migration fallback (legacy `picturePath`).
-- Audio recording (MediaRecorder + waveform) and playback.
-- Feed/profile post rendering with like & comment functionality.
-- Share action (progressive: Web Share → clipboard → textarea fallback) with Snackbar feedback.
-- Comment editing & deletion (inline edit, delete, edited indicator).
-- GIF rendering inside comments (first GIF auto displayed as <img>).
-- Object URL revocation for media previews.
-- Relative time utilities (timeAgo/objectId) and theme switching logic via Redux `mode` (no visible toggle UI).
- - Object URL revocation for media previews.
- - Relative time utilities (timeAgo/objectId) and theme switching logic via Redux `mode` (no visible toggle UI).
- - Snackbar error handling for like/comment/comment edit/delete & like failures (Quick Win B).
- - Simple lightbox modal for images/videos with keyboard nav (Quick Win C).
- - Location & occupation editing via profile dialog (Feature 6).
- - Real-time feed baseline via SSE (new posts, likes, comments update live).
+- Auth routing with `RequireAuth` for /home and /profile/:userId. (DONE)
+- Post creation: text + media (multi-image/video up to 5) + audio recording (voice message) + GIF URL embedding + external video URL embedding. (DONE)
+- Multi-media persistence via `mediaPaths` with migration fallback (legacy `picturePath`). (DONE)
+- Audio recording (MediaRecorder + waveform) and playback. (DONE)
+- Feed/profile post rendering with like & comment functionality. (DONE)
+- Share action (progressive: Web Share → clipboard → textarea fallback) with Snackbar feedback. (DONE)
+- Comment editing & deletion (inline edit, delete, edited indicator). (DONE)
+- GIF rendering inside comments (first GIF auto displayed as <img>). (DONE)
+- Object URL revocation for media previews. (DONE)
+- Relative time utilities (timeAgo/objectId) and theme switching logic via Redux `mode` (no visible toggle UI). (DONE)
+ - Object URL revocation for media previews. (DONE)
+ - Relative time utilities (timeAgo/objectId) and theme switching logic via Redux `mode` (no visible toggle UI). (DONE)
+ - Snackbar error handling for like/comment/comment edit/delete & like failures (Quick Win B). (DONE)
+ - Simple lightbox modal for images/videos with keyboard nav (Quick Win C). (DONE)
+ - Location & occupation editing via profile dialog (Feature 6). (DONE)
+ - Real-time feed baseline via SSE (new posts, likes, comments update live). (DONE)
 
 2. Unimplemented / Non-Functional / Partial Features
 1. Share action (PARTIAL)
@@ -30,7 +30,7 @@ Scope: Entire React client under `client/src`.
    - Cannot edit or delete existing comments. Only append new.
 3. Multiple media per post (DONE)
    - Only one file allowed (image OR video OR audio). No gallery/carousel support.
-4. GIF rendering inside comments (IMPLEMENTED 2025-09-26)
+4. GIF rendering inside comments (DONE)
     - Comment renderer now detects and displays all Giphy URLs as inline GIF images (lazy-loaded). Remaining text shown separately; multiple GIFs supported.
 5. Removing detected embeds
    - Auto video/GIF detection in post text has no explicit UI to remove aside from manually deleting URL.
@@ -38,7 +38,7 @@ Scope: Entire React client under `client/src`.
     - Implemented profile dialog (UserWidget) to update location & occupation; persists to backend and Redux.
 7. Profile page depth (PARTIAL)
    - No avatar/bio edit or explicit friend management actions observed (friend widget code not included in scan).
-8. Robust Giphy error/loading states (IMPLEMENTED)
+8. Robust Giphy error/loading states (DONE)
     - Added: debounced search w/ abort, skeleton loaders, explicit error messaging + retry, graceful empty state, manual reload, keyboard '/' focus shortcut, lazy image loading & hover affordances. Still could add rate limiting/backoff (future).
 9. Accessibility gaps (NOT A PRIORITY)
    - Icon-only buttons (like/share/GIF/audio) lack aria-labels.
@@ -47,12 +47,12 @@ Scope: Entire React client under `client/src`.
     - No pause/resume, trimming, duration metadata display, or re-record confirmation.
 11. Feedback on actions (PARTIAL)
     - Snackbar error surfaced for like/comment/add/edit/delete and comment load; remaining: global provider & retry/optimistic patterns.
-12. Input validation UX (IMPLEMENTED - POST & COMMENT LIMITS)
+12. Input validation UX (DONE)
     - Added live character counters & soft limits (post: 500 chars, comment: 300 chars) with color thresholds (85% warn, >100% error) and disabled submission when exceeded.
     - Future: externalize limits to config/env and add remaining field-specific validations (e.g., social links, role length).
 13. Shareable deep links
     - No dedicated `/post/:id` route; cannot open a single post in isolation.
-14. Draft persistence (IMPLEMENTED - TEXT + META)
+14. Draft persistence (DONE)
     - Post composer now saves draft (text + media file names + audio presence flag) to localStorage per user with debounce (400ms).
     - Restores on mount (single restore notification). Clear Draft option added.
     - Not persisting binary data (media/audio) to avoid storage bloat; future enhancement could inline small base64.
@@ -78,7 +78,7 @@ Scope: Entire React client under `client/src`.
             h. Upgrade path to WebSocket for bidirectional features (back-pressure, acknowledgements, presence updates).
             i. Client-side dedupe / version checks (ignore stale events if out-of-order delivery happens).
             j. Metrics & monitoring (count active connections, log disconnect reasons, alert on abnormal churn).
-19. Error boundaries (IMPLEMENTED)
+19. Error boundaries (DONE)
     - Global <ErrorBoundary> now wraps the routed application (added 2025-09-26) to prevent cascade failures.
     - Optional Enhancements (not yet implemented):
         a. Per-widget granular boundaries around high-risk components (e.g., PostWidget, MyPostWidget, GiphyPicker) to isolate failures without losing the whole view.
@@ -92,8 +92,8 @@ Scope: Entire React client under `client/src`.
     - Direct iframe/video creation from extracted URLs; limited sanitization -> potential XSS vector if helpers insufficient.
 23. Media compatibility
     - Raw WEBM audio may have Safari compatibility issues (no fallback or transcoding).
-24. Loading states
-    - Minimal ("Loading comments..."). No skeleton loaders.
+24. Loading states (IMPLEMENTED 2025-09-26) (DONE)
+    - Added feed/post list skeletons (already present) plus new comment list skeleton shimmer and user profile widget skeleton while user data loads.
 25. Pagination/infinite scroll
     - Full feed loads in one request; no lazy load or page slicing.
 
