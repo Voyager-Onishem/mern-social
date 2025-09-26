@@ -84,15 +84,15 @@ Scope: Entire React client under `client/src`.
         a. Per-widget granular boundaries around high-risk components (e.g., PostWidget, MyPostWidget, GiphyPicker) to isolate failures without losing the whole view.
         b. Remote error logging: POST captured error + componentStack to a backend /logs/client-error endpoint (with rate limiting & redaction for PII) for observability.
         c. Production-friendly minimal fallback UI (hide stack trace) with environment-based detail toggle; developer mode shows stack.
-20. Test coverage
-    - Core components (MyPostWidget/PostWidget/GiphyPicker/audio controls) untested. Only utility + trivial App test present.
+20. Test coverage (PARTIAL – initial core widget tests added 2025-09-26)
+    - Added baseline tests: PostWidget (renders text & impressions), MyPostWidget (draft restore & clear draft visibility), Comment (multi-GIF rendering). More needed for GiphyPicker, audio recording flow, optimistic comment actions, SSE updates.
 21. Service worker/PWA
     - No offline caching or install prompt despite share icon presence.
 22. Embed sanitization
     - Direct iframe/video creation from extracted URLs; limited sanitization -> potential XSS vector if helpers insufficient.
 23. Media compatibility
     - Raw WEBM audio may have Safari compatibility issues (no fallback or transcoding).
-24. Loading states (IMPLEMENTED 2025-09-26) (DONE)
+24. Loading states (DONE)
     - Added feed/post list skeletons (already present) plus new comment list skeleton shimmer and user profile widget skeleton while user data loads.
 25. Pagination/infinite scroll
     - Full feed loads in one request; no lazy load or page slicing.
