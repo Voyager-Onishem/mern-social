@@ -106,13 +106,16 @@ export const createPost = async (req, res) => {
     let uploadedPicture = null; // first image/video
     let uploadedAudio = null;
     let mediaList = [];
+    const MAX_MEDIA_FILES = parseInt(process.env.MAX_MEDIA_FILES || '5', 10);
     if (Array.isArray(req.files)) {
       for (const f of req.files) {
         const mime = f.mimetype || '';
         if (mime.startsWith('audio/') && !uploadedAudio) {
           uploadedAudio = f;
         } else if ((mime.startsWith('image/') || /^video\/(mp4|webm|ogg)$/i.test(mime))) {
-          mediaList.push(f);
+          if (mediaList.length < MAX_MEDIA_FILES) {
+            mediaList.push(f);
+          }
           if (!uploadedPicture) uploadedPicture = f;
         }
       }
@@ -120,11 +123,12 @@ export const createPost = async (req, res) => {
       const picArr = req.files.picture || req.files.media || [];
       const audioArr = req.files.audio || [];
       if (Array.isArray(picArr)) {
-        mediaList = picArr;
+        mediaList = picArr.slice(0, MAX_MEDIA_FILES);
         uploadedPicture = picArr[0];
       }
       if (Array.isArray(audioArr)) uploadedAudio = audioArr[0];
     }
+    if (mediaList.length > MAX_MEDIA_FILES) mediaList = mediaList.slice(0, MAX_MEDIA_FILES);
     const resolvedPicturePath = (uploadedPicture && uploadedPicture.filename) || picturePath;
     const resolvedAudioPath = (uploadedAudio && uploadedAudio.filename) || audioPathFromBody;
 

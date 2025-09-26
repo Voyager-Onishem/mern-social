@@ -20,7 +20,8 @@ const MyPostWidget = ({ picturePath }) => {
   const [isImage, setIsImage] = useState(false);
   // Support multiple media files (images or videos)
   const [mediaFiles, setMediaFiles] = useState([]); // Array<File>
-  const MAX_MEDIA_FILES = 5;
+  // Configurable max media files (fallback to 5) via env REACT_APP_MAX_MEDIA_FILES
+  const MAX_MEDIA_FILES = parseInt(process.env.REACT_APP_MAX_MEDIA_FILES || '5', 10);
   const [post, setPost] = useState("");
   const [giphyOpen, setGiphyOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -351,13 +352,26 @@ const MyPostWidget = ({ picturePath }) => {
           <audio ref={audioElRef} src={audioUrl || undefined} onPlay={() => setIsPlayingPreview(true)} onPause={() => setIsPlayingPreview(false)} onEnded={() => setIsPlayingPreview(false)} />
         </Box>
       )}
-      {/* Simple preview if a video or GIF URL is present in the post text */}
+      {/* Simple preview if a video or GIF URL is present in the post text with remove button */}
       {typeof post === 'string' && (() => {
         const v = extractFirstVideo(post);
+        const gif = !v && isGiphyUrl(post) ? extractFirstGiphyUrl(post) : null;
+        if (!v && !gif) return null;
+        const handleRemove = () => {
+          if (v) {
+            const toRemove = v.url;
+            setPost(prev => prev.replace(toRemove, '').trim());
+          } else if (gif) {
+            setPost(prev => prev.replace(gif, '').trim());
+          }
+        };
         if (v) {
           const embed = getEmbedForVideo(v);
           return (
             <Box mt={1} sx={{ position: 'relative', width: '100%', maxWidth: '640px', aspectRatio: '16/9' }}>
+              <IconButton size="small" aria-label="Remove embedded video" onClick={handleRemove} sx={{ position: 'absolute', top: 4, right: 4, zIndex: 2, bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}>
+                <DeleteOutlined fontSize="small" />
+              </IconButton>
               {embed.tag === 'iframe' ? (
                 <Box component="iframe" src={embed.src} allow={embed.allow} allowFullScreen={embed.allowFullScreen} sx={{ width: '100%', height: '100%', border: 0, borderRadius: 1 }} />
               ) : (
@@ -366,11 +380,14 @@ const MyPostWidget = ({ picturePath }) => {
             </Box>
           );
         }
-        if (isGiphyUrl(post)) {
+        if (gif) {
           return (
-            <Box mt={1}>
+            <Box mt={1} sx={{ position: 'relative', display: 'inline-block' }}>
+              <IconButton size="small" aria-label="Remove embedded GIF" onClick={handleRemove} sx={{ position: 'absolute', top: 4, right: 4, zIndex: 2, bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,0.6)' } }}>
+                <DeleteOutlined fontSize="small" />
+              </IconButton>
               <img
-                src={extractFirstGiphyUrl(post) || undefined}
+                src={gif || undefined}
                 alt="GIF Preview"
                 style={{ maxWidth: 200, borderRadius: 8 }}
               />

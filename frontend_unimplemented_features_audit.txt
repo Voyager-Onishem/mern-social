@@ -190,7 +190,28 @@ Scope: Entire React client under `client/src`.
 - External embed allowances depend on helper; need whitelist review.
 
 5. Quick Win Recommendations (Updated)
-A. Add missing aria-labels + waveform alt description.
+D. Replace all alert() calls with unified Snackbar/toast. (B & C done)
+E. Add skeleton loaders for posts & comments.
+F. Optimistic comment update & rollback pattern.
+G. Configurable MAX_MEDIA_FILES via env & enforce on server.
+H. Tooltip with edited timestamp for edited comments.
+I. Add explicit remove-embed button when auto-detected media is present.
+J. (DONE) Introduced global ErrorBoundary; consider granular boundaries & logging (see Feature 19 optional enhancements).
+ K. SSE heartbeat & reconnect backoff (convert 18.a & 18.b into short-term actionable items).
+ L. Polling fallback for SSE failures (18.d).
+ M. Batch/coalesce rapid SSE events (18.g) to reduce render thrash.
+
+Quick Win Status Updates (2025-09-26):
+ - A IMPLEMENTED: ARIA labels added to interactive icon buttons; waveform canvas given descriptive aria-label.
+ - G IMPLEMENTED: MAX_MEDIA_FILES now configurable via REACT_APP_MAX_MEDIA_FILES (client) and MAX_MEDIA_FILES (server env); server caps media attachments.
+ - H IMPLEMENTED: Edited comments show tooltip with last edit relative time; screen reader label updated.
+ - I IMPLEMENTED: Remove button overlays for detected video/GIF embeds in composer.
+ - K IMPLEMENTED: SSE client now includes heartbeat silence detection, exponential backoff, and reconnection logic.
+ - L PARTIAL: Polling fallback (10s interval) activates after repeated SSE failures (attempt >5); future enhancement: adaptive interval & disable when SSE recovers.
+ - M IMPLEMENTED: Client batches rapid SSE events with 250ms coalescing window before dispatch.
+ - D Not Needed: No native alert() calls found; handled by existing Snackbar patterns.
+ - E Pending.
+ - F Pending.
 D. Replace all alert() calls with unified Snackbar/toast. (B & C done)
 E. Add skeleton loaders for posts & comments.
 F. Optimistic comment update & rollback pattern.
