@@ -286,7 +286,17 @@ const PostWidget = ({
             {embed && (
               <Box mt={textWithoutMedia ? 1 : 0.5} sx={{ position: 'relative', width: '100%', maxWidth: '640px', aspectRatio: '16/9' }}>
                 {embed.tag === 'iframe' ? (
-                  <Box component="iframe" src={embed.src} allow={embed.allow} allowFullScreen={embed.allowFullScreen} sx={{ width: '100%', height: '100%', border: 0, borderRadius: 1 }} />
+                  <Box
+                    component="iframe"
+                    src={embed.src}
+                    allow={embed.allow}
+                    sandbox={embed.sandbox}
+                    allowFullScreen={embed.allowFullScreen}
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                    title="Embedded video"
+                    sx={{ width: '100%', height: '100%', border: 0, borderRadius: 1 }}
+                  />
                 ) : (
                   <Box component="video" src={embed.src} controls sx={{ width: '100%', height: '100%', borderRadius: 1 }} />
                 )}

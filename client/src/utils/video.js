@@ -21,13 +21,21 @@ export function extractFirstVideo(text) {
   return null;
 }
 
+import { sanitizeIframeSrc, SAFE_IFRAME_ATTRS } from './sanitizeEmbed';
+
 export function getEmbedForVideo(meta) {
   if (!meta) return null;
   switch (meta.type) {
-    case 'youtube':
-      return { tag: 'iframe', src: `https://www.youtube.com/embed/${meta.id}`, allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture', allowFullScreen: true };
-    case 'vimeo':
-      return { tag: 'iframe', src: `https://player.vimeo.com/video/${meta.id}`, allow: 'autoplay; fullscreen; picture-in-picture', allowFullScreen: true };
+    case 'youtube': {
+      const src = sanitizeIframeSrc('youtube', meta.id);
+      if (!src) return null;
+      return { tag: 'iframe', src, ...SAFE_IFRAME_ATTRS };
+    }
+    case 'vimeo': {
+      const src = sanitizeIframeSrc('vimeo', meta.id);
+      if (!src) return null;
+      return { tag: 'iframe', src, ...SAFE_IFRAME_ATTRS };
+    }
     case 'direct':
       return { tag: 'video', src: meta.url, controls: true };
     default:

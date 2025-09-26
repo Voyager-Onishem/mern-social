@@ -88,8 +88,8 @@ Scope: Entire React client under `client/src`.
     - Added baseline tests: PostWidget (renders text & impressions), MyPostWidget (draft restore & clear draft visibility), Comment (multi-GIF rendering). More needed for GiphyPicker, audio recording flow, optimistic comment actions, SSE updates.
 21. Service worker/PWA
     - No offline caching or install prompt despite share icon presence.
-22. Embed sanitization
-    - Direct iframe/video creation from extracted URLs; limited sanitization -> potential XSS vector if helpers insufficient.
+22. Embed sanitization (DONE)
+    - Implemented centralized whitelist (YouTube/Vimeo/direct). Added sanitizeEmbed.js with provider normalization, sandbox, referrerPolicy, lazy loading, stripped permissions. Iframes now carry reduced allow list (no autoplay) & sandbox.
 23. Media compatibility
     - Raw WEBM audio may have Safari compatibility issues (no fallback or transcoding).
 24. Loading states (DONE)
@@ -284,7 +284,7 @@ J. (DONE) Introduced global ErrorBoundary; consider granular boundaries & loggin
 | Single post deep link | Missing |
 | Accessibility polish | Partial |
 | Test coverage (core UI) | Low |
-| Embed sanitization hardening | Needs review |
+| Embed sanitization hardening | Implemented |
 
 10. Next Steps (If You Want Action)
 Reply with the letters of items you’d like implemented first (e.g., "A, B, D" for Share, GIF rendering in comments, and object URL cleanup) and I can proceed directly.
