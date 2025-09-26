@@ -76,19 +76,6 @@ const Navbar = () => {
         >
           Alucon
         </Typography>
-        {showFloatingPost && (
-          <Button
-            variant="contained"
-            color="primary"
-            size="small"
-            startIcon={<AddCircleOutlineIcon />}
-            onClick={() => setOpenPostModal(true)}
-            sx={{ textTransform: 'none', fontWeight: 600 }}
-            aria-label="Create a post"
-          >
-            Post
-          </Button>
-        )}
         {isNonMobileScreens && (
           <FlexBetween
             backgroundColor={neutralLight}
@@ -106,14 +93,29 @@ const Navbar = () => {
 
       {/* DESKTOP NAV */}
       {isNonMobileScreens ? (
-        <FlexBetween gap="2rem">
-          <IconButton onClick={() => dispatch(setMode())}>
-            {theme.palette.mode === "dark" ? (
-              <DarkMode sx={{ fontSize: "25px" }} />
-            ) : (
-              <LightMode sx={{ color: dark, fontSize: "25px" }} />
+        <FlexBetween gap="1.25rem">
+          <FlexBetween gap="0.5rem">
+            {showFloatingPost && (
+              <Button
+                variant="contained"
+                color="primary"
+                size="small"
+                startIcon={<AddCircleOutlineIcon />}
+                onClick={() => setOpenPostModal(true)}
+                sx={{ textTransform: 'none', fontWeight: 600, boxShadow: 'none' }}
+                aria-label="Create a post"
+              >
+                Post
+              </Button>
             )}
-          </IconButton>
+            <IconButton onClick={() => dispatch(setMode())}>
+              {theme.palette.mode === "dark" ? (
+                <DarkMode sx={{ fontSize: "25px" }} />
+              ) : (
+                <LightMode sx={{ color: dark, fontSize: "25px" }} />
+              )}
+            </IconButton>
+          </FlexBetween>
           <Message sx={{ fontSize: "25px" }} />
           <Notifications sx={{ fontSize: "25px" }} />
           <Help sx={{ fontSize: "25px" }} />
