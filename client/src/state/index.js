@@ -6,6 +6,7 @@ const initialState = {
   token: null,
   posts: [],
   postsLoading: false,
+  sessionSeenPostIds: {}, // Feature 26: track which post IDs have been counted locally this session
 };
 
 export const authSlice = createSlice({
@@ -50,10 +51,29 @@ export const authSlice = createSlice({
       if (state.posts.find(existing => existing._id === p._id)) return; // avoid duplicates
       state.posts = [p, ...state.posts];
     },
+    incrementPostImpression: (state, action) => {
+      const { postId, amount = 1 } = action.payload || {};
+      if (!postId) return;
+      const idx = state.posts.findIndex(p => p._id === postId);
+      if (idx !== -1) {
+        const current = state.posts[idx].impressions || 0;
+        state.posts[idx] = { ...state.posts[idx], impressions: current + amount };
+      }
+    },
+    markPostSeenThisSession: (state, action) => {
+      const { postId } = action.payload || {};
+      if (postId) state.sessionSeenPostIds[postId] = true;
+    },
+    setUserProfileViewsTotal: (state, action) => {
+      const { profileViewsTotal } = action.payload || {};
+      if (state.user && typeof profileViewsTotal === 'number') {
+        state.user.profileViewsTotal = profileViewsTotal;
+      }
+    },
   },
 });
 
-export const { setMode, setLogin, setLogout, setFriends, setPosts, setPost, addPost } =
+export const { setMode, setLogin, setLogout, setFriends, setPosts, setPost, addPost, incrementPostImpression, markPostSeenThisSession, setUserProfileViewsTotal } =
   authSlice.actions;
 export const { setPostsLoading } = authSlice.actions;
 export default authSlice.reducer;

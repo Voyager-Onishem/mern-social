@@ -40,6 +40,8 @@ const UserSchema = new mongoose.Schema(
   linkedinUrl: String,
     viewedProfile: Number,
     impressions: Number,
+    // Phase 1 Feature 26: new counters (non-unique) for engagement analytics
+    profileViewsTotal: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

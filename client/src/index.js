@@ -31,6 +31,15 @@ const store = configureStore({
     }),
 });
 
+// Expose store for non-hook utility logic (e.g., IntersectionObserver in PostsWidget) - limited use
+if (typeof window !== 'undefined') {
+  window.__APP_STORE__ = store;
+}
+
+// Expose store globally for non-hook utilities (e.g., IntersectionObserver in PostsWidget)
+if (typeof window !== 'undefined') {
+  window.__APP_STORE__ = store;
+}
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>

@@ -34,6 +34,8 @@ const postSchema = mongoose.Schema(
         editedAt: { type: Date },
       },
     ],
+    // Phase 1 Feature 26: simple (non-unique) impressions counter
+    impressions: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

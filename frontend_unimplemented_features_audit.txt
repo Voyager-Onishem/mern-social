@@ -97,13 +97,27 @@ Scope: Entire React client under `client/src`.
 25. Pagination/infinite scroll
     - Full feed loads in one request; no lazy load or page slicing.
 
-26. Engagement metrics: Real profile views & post impressions (NOT IMPLEMENTED)
-     Current state:
-        - Fields `viewedProfile` and `impressions` on User/Post are placeholder/randomized (seed) values, not tied to real user behavior.
-     Goal:
-        - Accurately track: (a) unique (and total) profile views per user, (b) unique (and total) impressions per post.
-        - Optional visibility of recent viewers (privacy-aware) and basic analytics (e.g., top posts by reach).
-     Backend Plan:
+26. Engagement metrics: Real profile views & post impressions (PARTIAL - Phase 1 backend counters)
+      Phase 1 Implemented (2025-09-26):
+          - Added `profileViewsTotal` counter to `User` model (increment-only, non-unique).
+          - Added `impressions` counter (default 0) to `Post` model (increment-only, non-unique).
+          - New analytics endpoints:
+                 POST /analytics/profile-view { profileUserId }
+                 POST /analytics/post-impressions { postIds: [] }
+                 GET  /analytics/profile/:id/summary
+                 GET  /analytics/post/:id/summary
+          - Basic validation & auth (re-uses JWT via verifyToken); self profile views skipped.
+          - BulkWrite used for impressions to minimize write amplification.
+          - No uniqueness / throttling yet (future phases) so high-frequency views will inflate counts; acceptable for Phase 1.
+      Remaining (Future Phases):
+          Phase 2: Uniqueness handling (per user dedupe windows), session/local Set on client, time-window suppression.
+          Phase 3: Viewer list (privacy toggle), post-level unique/impressions breakdown.
+          Phase 4: Aggregated summaries & dashboards (top posts, trends, daily rollups, TTL for raw events if added).
+          Phase 5: Monitoring hooks & anomaly detection (spikes, bot heuristics).
+      Original Goal (still outstanding in part):
+          - Accurately track: (a) unique (and total) profile views per user, (b) unique (and total) impressions per post.
+          - Optional visibility of recent viewers (privacy-aware) and basic analytics (e.g., top posts by reach).
+      Backend Plan (Expanded for future phases):
         1. Data Model Changes:
             - User: replace/rename `viewedProfile` -> `profileViewsTotal` (numeric) and add `profileViewsUnique` (numeric) OR adopt an embedded aggregation doc.
             - Post: keep `impressions` but clarify semantics; add `impressionsUnique` (numeric).

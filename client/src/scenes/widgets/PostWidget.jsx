@@ -37,6 +37,7 @@ const PostWidget = ({
   likes,
   comments,
   createdAt,
+  impressions, // Feature 26 Phase 1 (may be undefined for legacy posts)
 }) => {
   const [isComments, setIsComments] = useState(false);
   const [commentText, setCommentText] = useState("");
@@ -342,6 +343,11 @@ const PostWidget = ({
           </IconButton>
         </Tooltip>
       </FlexBetween>
+      {typeof impressions === 'number' && impressions >= 0 && (
+        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: main }} aria-label={`Post impressions ${impressions}`}>
+          Impressions: {impressions}
+        </Typography>
+      )}
       {isComments && (
         <Box mt="0.5rem">
           {loadingComments ? (

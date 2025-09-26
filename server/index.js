@@ -12,6 +12,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import postRoutes from "./routes/posts.js";
+import analyticsRoutes from "./routes/analytics.js";
 import { register } from "./controllers/auth.js";
 import { createPost } from "./controllers/posts.js";
 import { verifyToken } from "./middleware/auth.js";
@@ -98,6 +99,7 @@ app.post(
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/posts", postRoutes);
+app.use('/analytics', analyticsRoutes);
 
 // SSE endpoint for real-time updates
 app.get('/realtime', verifyToken, (req, res) => {

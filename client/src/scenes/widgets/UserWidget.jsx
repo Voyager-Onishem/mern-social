@@ -9,7 +9,7 @@ import UserImage from "components/UserImage";
 import FlexBetween from "components/FlexBetween";
 import WidgetWrapper from "components/WidgetWrapper";
 import { useSelector, useDispatch } from "react-redux";
-import { setLogin } from "state";
+import { setLogin, setUserProfileViewsTotal } from "state";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -49,6 +49,30 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
   useEffect(() => {
     getUser();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Record a profile view (Feature 26 Phase 1) once user data present & not own profile
+    useEffect(() => {
+      if (!user || !token) return;
+      if (loggedUser?._id === userId) return; // skip self
+      let aborted = false;
+      (async () => {
+        try {
+          const resp = await fetch(`${API_URL}/analytics/profile-view`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileUserId: userId })
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (aborted) return;
+          if (resp.ok && typeof data.profileViewsTotal === 'number') {
+            dispatch(setUserProfileViewsTotal({ profileViewsTotal: data.profileViewsTotal }));
+            setUser(prev => prev ? { ...prev, profileViewsTotal: data.profileViewsTotal } : prev);
+          }
+        } catch {
+          // silent fail (non-critical)
+        }
+      })();
+      return () => { aborted = true; };
+    }, [user, token, userId, loggedUser, dispatch]);
 
   const isOwnProfile = loggedUser?._id === userId;
 
@@ -129,8 +153,9 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
     lastName,
     location,
     occupation,
-    viewedProfile,
-    impressions,
+    viewedProfile, // legacy field
+    impressions, // legacy placeholder (may not reflect real data yet)
+    profileViewsTotal,
     friends,
   } = user;
 
@@ -216,13 +241,13 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
         <FlexBetween mb="0.5rem">
           <Typography color={medium}>Who's viewed your profile</Typography>
           <Typography color={main} fontWeight="500">
-            {viewedProfile}
+            {typeof profileViewsTotal === 'number' ? profileViewsTotal : (typeof viewedProfile === 'number' ? viewedProfile : 0)}
           </Typography>
         </FlexBetween>
         <FlexBetween>
           <Typography color={medium}>Impressions of your post</Typography>
           <Typography color={main} fontWeight="500">
-            {impressions}
+            {typeof impressions === 'number' ? impressions : 0}
           </Typography>
         </FlexBetween>
       </Box>
