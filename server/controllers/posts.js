@@ -132,11 +132,31 @@ export const createPost = async (req, res) => {
     const resolvedPicturePath = (uploadedPicture && uploadedPicture.filename) || picturePath;
     const resolvedAudioPath = (uploadedAudio && uploadedAudio.filename) || audioPathFromBody;
 
+    // Get location from request or use user's default location
+    const postLocation = req.body.location || user.location;
+    
+    // Check if location coordinates are provided
+    let locationData = {};
+    if (req.body.locationCoords) {
+      try {
+        const coords = JSON.parse(req.body.locationCoords);
+        if (coords && typeof coords === 'object' && 'lat' in coords && 'lng' in coords) {
+          locationData = {
+            latitude: coords.lat,
+            longitude: coords.lng
+          };
+        }
+      } catch (e) {
+        console.error("Error parsing location coordinates:", e);
+      }
+    }
+    
     const newPost = new Post({
       userId,
       firstName: user.firstName,
       lastName: user.lastName,
-      location: user.location,
+      location: postLocation,
+      locationData: Object.keys(locationData).length > 0 ? locationData : undefined,
       description,
       userPicturePath: user.picturePath,
       picturePath: resolvedPicturePath,

@@ -15,11 +15,15 @@ const postSchema = mongoose.Schema(
       required: true,
     },
     location: String,
+    locationData: {
+      latitude: Number,
+      longitude: Number
+    },
     description: String,
-  picturePath: String,
-  userPicturePath: String,
-  audioPath: String,
-  mediaPaths: [String],
+    picturePath: String,
+    userPicturePath: String,
+    audioPath: String,
+    mediaPaths: [String],
     likes: {
       type: Map,
       of: Boolean,

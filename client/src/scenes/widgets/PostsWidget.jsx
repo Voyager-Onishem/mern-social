@@ -639,6 +639,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
           lastName,
           description,
           location,
+          locationData,
           picturePath,
           audioPath,
           userPicturePath,
@@ -655,6 +656,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
               name={`${firstName} ${lastName}`}
               description={description}
               location={location}
+              locationData={locationData}
               picturePath={picturePath}
               audioPath={audioPath}
               mediaPaths={mediaPaths}

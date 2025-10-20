@@ -5,6 +5,7 @@ import FlexBetween from "components/FlexBetween";
 import Dropzone from "react-dropzone";
 import UserImage from "components/UserImage";
 import WidgetWrapper from "components/WidgetWrapper";
+import LocationPicker from "components/LocationPicker";
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setPosts } from "state";
@@ -23,6 +24,7 @@ const MyPostWidget = ({ picturePath }) => {
   // Configurable max media files (fallback to 5) via env REACT_APP_MAX_MEDIA_FILES
   const MAX_MEDIA_FILES = parseInt(process.env.REACT_APP_MAX_MEDIA_FILES || '5', 10);
   const [post, setPost] = useState("");
+  const [location, setLocation] = useState(null);
   const [giphyOpen, setGiphyOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
   // Audio recording state
@@ -61,6 +63,27 @@ const MyPostWidget = ({ picturePath }) => {
     const formData = new FormData();
     formData.append("userId", _id);
     formData.append("description", post);
+    
+    // Handle location
+    if (location) {
+      // If location is an object with formattedName (from LocationPicker)
+      if (typeof location === 'object' && location.formattedName) {
+        formData.append("location", location.formattedName);
+        
+        // Also append coordinates if available
+        if (location.latitude && location.longitude) {
+          formData.append("locationCoords", JSON.stringify({
+            lat: location.latitude,
+            lng: location.longitude
+          }));
+        }
+      } 
+      // If it's just a string
+      else if (typeof location === 'string') {
+        formData.append("location", location);
+      }
+    }
+    
     if (mediaFiles.length > 0) {
       // For backward compatibility with current backend (single picturePath/audioPath fields),
       // we will send the first file in legacy fields and all files as an array 'media[]'
@@ -100,6 +123,7 @@ const MyPostWidget = ({ picturePath }) => {
       });
       setMediaFiles([]);
       setPost("");
+      setLocation(null);
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       setAudioBlob(null);
       setAudioUrl("");
@@ -236,6 +260,12 @@ const MyPostWidget = ({ picturePath }) => {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed.text === 'string' && parsed.text.trim()) {
           setPost((prev) => prev || parsed.text);
+          
+          // Restore location if available
+          if (parsed.location) {
+            setLocation(parsed.location);
+          }
+          
           setRestoredDraft(true);
           notify('Draft restored', { severity: 'info' });
         }
@@ -257,6 +287,7 @@ const MyPostWidget = ({ picturePath }) => {
           text: post,
           mediaNames: mediaFiles.map(f => f.name),
           hasAudio: !!audioBlob,
+          location: location,
           ts: Date.now(),
           v: 1,
         };
@@ -323,6 +354,15 @@ const MyPostWidget = ({ picturePath }) => {
           )}
         </Box>
       </FlexBetween>
+
+      {/* Location Picker */}
+      <Box mt={1} mb={1}>
+        <LocationPicker
+          value={location}
+          onChange={setLocation}
+        />
+      </Box>
+
       {/* Recording popup */}
       {isRecording && (
         <Box mt={1} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, border: `1px solid ${medium}`, borderRadius: 1, background: palette.neutral.light }}>

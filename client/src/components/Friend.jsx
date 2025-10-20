@@ -1,14 +1,15 @@
-import { PersonAddOutlined, PersonRemoveOutlined } from "@mui/icons-material";
-import { Box, IconButton, Typography, useTheme } from "@mui/material";
+import { PersonAddOutlined, PersonRemoveOutlined, LocationOn } from "@mui/icons-material";
+import { Box, IconButton, Typography, useTheme, Tooltip } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { setFriends } from "state";
 import FlexBetween from "./FlexBetween";
 import UserImage from "./UserImage";
+import LocationMap from "./LocationMap";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const Friend = ({ friendId, name, subtitle, userPicturePath, onFriendToggled }) => {
+const Friend = ({ friendId, name, subtitle, location, locationCoords, timestamp, userPicturePath, onFriendToggled }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { _id } = useSelector((state) => state.user);
@@ -85,7 +86,37 @@ const Friend = ({ friendId, name, subtitle, userPicturePath, onFriendToggled }) 
               </Box>
             )}
           </Typography>
-          <Typography color={medium} fontSize="0.75rem">
+          <Typography color={medium} fontSize="0.75rem" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}>
+            {location && (
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Tooltip title="View on Google Maps" arrow>
+                  <Box 
+                    sx={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      mr: '0.25rem',
+                      '&:hover': {
+                        color: palette.primary.main,
+                        cursor: 'pointer'
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`https://maps.google.com/maps?q=${encodeURIComponent(location)}`, '_blank');
+                    }}
+                  >
+                    <LocationOn sx={{ fontSize: 14, mr: '0.1rem' }} />
+                    <span>{location}</span>
+                  </Box>
+                </Tooltip>
+                {locationCoords && <LocationMap 
+                  latitude={locationCoords.lat || locationCoords.latitude} 
+                  longitude={locationCoords.lng || locationCoords.longitude}
+                  location={location}
+                />}
+              </Box>
+            )}
+            {location && subtitle && <span style={{ margin: '0 0.25rem' }}>·</span>}
             {subtitle}
           </Typography>
         </Box>

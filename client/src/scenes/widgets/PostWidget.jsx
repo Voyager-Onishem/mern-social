@@ -35,6 +35,7 @@ const PostWidget = forwardRef(({
   name,
   description,
   location,
+  locationData, // Add locationData prop
   picturePath,
   audioPath,
   mediaPaths = [],
@@ -360,7 +361,9 @@ const PostWidget = forwardRef(({
       <Friend
         friendId={postUserId}
         name={name}
-        subtitle={[location, timeAgo(createdAt || objectIdToDate(postId))].filter(Boolean).join(" · ")}
+        location={location}
+        locationCoords={locationData}
+        subtitle={timeAgo(createdAt || objectIdToDate(postId))}
         userPicturePath={userPicturePath}
       />
       {(() => {
