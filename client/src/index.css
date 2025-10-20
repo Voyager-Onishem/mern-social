@@ -8,3 +8,21 @@ body,
   width: 100%;
   font-family: "Rubik", sans-serif;
 }
+
+/* Animation for highlighting a post */
+@keyframes highlight-post {
+  0% {
+    box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 0 0px rgba(25, 118, 210, 0);
+  }
+}
+
+/* Apply highlight animation to posts with highlight class */
+#root .highlight {
+  animation: highlight-post 2s ease-in-out;
+}

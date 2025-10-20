@@ -11,7 +11,7 @@ import Comment from "components/Comment";
 import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
-import { useState, useRef, forwardRef } from "react";
+import React, { useState, useRef, forwardRef } from "react";
 import { extractFirstGiphyUrl, isGiphyUrl, extractGiphyUrls } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
 import { timeAgo } from "utils/timeAgo";
@@ -262,7 +262,11 @@ const PostWidget = forwardRef(({
   })();
 
   return (
-    <WidgetWrapper id={`post-${postId}`} m="2rem 0">
+    <WidgetWrapper 
+      id={`post-${postId}`} 
+      m="2rem 0"
+      ref={ref}
+    >
       <Friend
         friendId={postUserId}
         name={name}
@@ -560,5 +564,8 @@ const PostWidget = forwardRef(({
     </WidgetWrapper>
   );
 });
+
+// Add a display name to the forwardRef component
+PostWidget.displayName = 'PostWidget';
 
 export default PostWidget;

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setPosts, setPostsLoading, incrementPostImpression, markPostSeenThisSession } from "state";
 import { Box, Skeleton } from '@mui/material';
@@ -77,11 +77,19 @@ const PostsWidget = ({ userId, isProfile = false }) => {
       if (post) {
         // Use a small delay to ensure the post is rendered
         setTimeout(() => {
-          const element = targetPostRef.current;
+          const element = targetPostRef.current[targetPostId];
           if (element && element.scrollIntoView) {
+            // Scroll the element into view
             element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            // Add highlight effect
-            element.style.animation = 'highlight-post 2s';
+            
+            // Add highlight effect using direct DOM manipulation
+            const postElement = document.getElementById(`post-${targetPostId}`);
+            if (postElement) {
+              postElement.classList.add('highlight');
+              setTimeout(() => {
+                postElement.classList.remove('highlight');
+              }, 2000);
+            }
           }
         }, 500);
       }
@@ -232,7 +240,9 @@ const PostsWidget = ({ userId, isProfile = false }) => {
             comments={comments}
             createdAt={createdAt}
             impressions={impressions}
-            ref={targetPostId === _id ? targetPostRef.current : null}
+            ref={targetPostId === _id ? (el) => { 
+              if (el) targetPostRef.current[_id] = el; 
+            } : undefined}
           />
         )
       )}
