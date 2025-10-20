@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Box,
   IconButton,
@@ -10,6 +10,8 @@ import {
   Button,
   useTheme,
   useMediaQuery,
+  Popover,
+  CircularProgress,
 } from "@mui/material";
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CloseIcon from '@mui/icons-material/Close';
@@ -23,6 +25,8 @@ import {
   Menu,
   Close,
 } from "@mui/icons-material";
+import { searchApi } from "../../api/searchApi.js";
+import SearchResultsWidget from "components/SearchResultsWidget.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { setMode, setLogout } from "state";
 import { useNavigate } from "react-router-dom";
@@ -38,6 +42,14 @@ const Navbar = () => {
   const user = useSelector((state) => state.user);
   const isNonMobileScreens = useMediaQuery("(min-width: 1000px)");
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const searchInputRef = useRef(null);
+
   const theme = useTheme();
   const neutralLight = theme.palette.neutral.light;
   const dark = theme.palette.neutral.dark;
@@ -48,6 +60,39 @@ const Navbar = () => {
   const fullName = `${user.firstName} ${user.lastName}`;
   const [showFloatingPost, setShowFloatingPost] = useState(false);
   const [openPostModal, setOpenPostModal] = useState(false);
+
+  // Handle search submit
+  const handleSearch = async (e) => {
+    e?.preventDefault();
+    
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) return;
+    
+    setIsSearching(true);
+    setSearchError(null);
+    setAnchorEl(searchInputRef.current);
+    
+    try {
+      const results = await searchApi(searchQuery.trim());
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Search failed:", error);
+      setSearchError(error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle search input keypress
+  const handleSearchKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSearch(e);
+    }
+  };
+
+  // Close search results
+  const handleCloseResults = () => {
+    setAnchorEl(null);
+  };
 
   useEffect(() => {
     const handler = (e) => {
@@ -83,12 +128,53 @@ const Navbar = () => {
             gap="3rem"
             padding="0.1rem 1.5rem"
           >
-            <InputBase placeholder="Search..." />
-            <IconButton aria-label="Search">
-              <Search />
+            <InputBase 
+              placeholder="Search..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleSearchKeyPress}
+              inputRef={searchInputRef}
+            />
+            <IconButton 
+              aria-label="Search"
+              onClick={handleSearch}
+              disabled={isSearching}
+            >
+              {isSearching ? <CircularProgress size={24} /> : <Search />}
             </IconButton>
           </FlexBetween>
         )}
+        
+        {/* Search Results Popover */}
+        <Popover
+          open={Boolean(anchorEl)}
+          anchorEl={anchorEl}
+          onClose={handleCloseResults}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'left',
+          }}
+          PaperProps={{
+            style: {
+              width: isNonMobileScreens ? '400px' : '90vw',
+              maxHeight: '70vh',
+              overflow: 'auto',
+              marginTop: '8px',
+              boxShadow: '0px 5px 15px rgba(0,0,0,0.2)'
+            }
+          }}
+        >
+          <SearchResultsWidget 
+            searchResults={searchResults} 
+            isLoading={isSearching} 
+            error={searchError}
+            onClose={handleCloseResults}
+          />
+        </Popover>
       </FlexBetween>
 
       {/* DESKTOP NAV */}
@@ -183,6 +269,31 @@ const Navbar = () => {
             alignItems="center"
             gap="3rem"
           >
+            {/* Mobile Search */}
+            <FlexBetween
+              backgroundColor={neutralLight}
+              borderRadius="9px"
+              gap="1rem"
+              padding="0.1rem 1.5rem"
+              width="80%"
+              mb="1rem"
+            >
+              <InputBase 
+                placeholder="Search..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleSearchKeyPress}
+                sx={{ width: '100%' }}
+                ref={searchInputRef}
+              />
+              <IconButton 
+                aria-label="Search"
+                onClick={handleSearch}
+                disabled={isSearching}
+              >
+                {isSearching ? <CircularProgress size={24} /> : <Search />}
+              </IconButton>
+            </FlexBetween>
             <IconButton
               onClick={() => dispatch(setMode())}
               sx={{ fontSize: "25px" }}
