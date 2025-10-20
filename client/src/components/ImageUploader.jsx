@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import {
   CloudUpload,
-  Image,
+  Image as ImageIcon,
   InsertDriveFile,
   Close,
   CloudDone,
@@ -43,30 +43,53 @@ const ImageUploader = ({ onImageSelected }) => {
 
   const processFile = (file) => {
     if (file) {
-      // Check if file is an image
-      if (file.type && !file.type.startsWith("image/")) {
+      console.log("Processing file:", file);
+      
+      // Check if file is an image (only for regular files, not cloud references)
+      const isCloudFile = file.isCloudFile || file.source === "cloud-storage" || file.type === "cloud-image";
+      
+      // Validate file type for regular uploads only
+      if (!isCloudFile && file.type && !file.type.startsWith("image/")) {
         alert("Please select an image file");
         return;
       }
 
       // Check file size if it's a real file (not a cloud reference)
-      if (file.size && file.size > 5 * 1024 * 1024) {
+      if (!isCloudFile && file.size && file.size > 5 * 1024 * 1024) {
         alert("File size exceeds 5MB limit");
         return;
       }
 
+      // Store the file reference
       setImage(file);
       
-      // Create a preview URL for real files
-      if (file.type) {
+      // Create a preview URL based on file type
+      if (!isCloudFile && file.type) {
+        // For real file uploads
         const reader = new FileReader();
         reader.onloadend = () => {
           setPreviewUrl(reader.result);
         };
         reader.readAsDataURL(file);
       } else {
-        // For cloud files, use a placeholder or asset path
-        setPreviewUrl(`/assets/${file.name}`);
+        // For cloud files
+        const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:6001";
+        
+        // Use the path if provided, otherwise construct it
+        if (file.path) {
+          setPreviewUrl(file.path);
+        } else {
+          setPreviewUrl(`${apiUrl}/assets/${file.name}`);
+        }
+        
+        // Pre-load the image to check if it exists
+        const img = new window.Image();
+        img.onerror = () => {
+          console.warn(`Image ${file.name} failed to load from API. Trying fallback path.`);
+          // Try fallback path if API URL fails
+          setPreviewUrl(`/assets/${file.name}`);
+        };
+        img.src = file.path || `${apiUrl}/assets/${file.name}`;
       }
       
       // Pass the file to the parent component
@@ -156,47 +179,66 @@ const ImageUploader = ({ onImageSelected }) => {
             <Close />
           </IconButton>
           
-          <Box
-            sx={{
-              mt: 1,
-              mb: 1,
-              width: "100%",
-              height: "200px",
-              overflow: "hidden",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              borderRadius: "8px",
-              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)',
-              position: "relative",
-            }}
-          >
-            <img
-              src={previewUrl}
-              alt="Selected"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "100%",
-                objectFit: "contain",
+            <Box
+              sx={{
+                mt: 1,
+                mb: 1,
+                width: "100%",
+                height: "200px",
+                overflow: "hidden",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                borderRadius: "8px",
+                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)',
+                position: "relative",
+                border: `1px solid ${theme.palette.divider}`,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
               }}
-            />
-          </Box>
-          
-          <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-            {image.type ? (
-              // Local file
-              <>
-                <CloudDone sx={{ color: "success.main", mr: 1 }} />
-                <Typography variant="body2" color="text.secondary">
-                  {image.name} ({(image.size / 1024).toFixed(1)} KB)
-                </Typography>
-              </>
-            ) : (
+            >
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt="Selected"
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                    objectFit: "contain",
+                    borderRadius: "4px",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                  }}
+                  onError={(e) => {
+                    console.error("Image failed to load:", e);
+                    // Try with a different path pattern before falling back to placeholder
+                    if (!e.target.dataset.triedAlternate) {
+                      e.target.dataset.triedAlternate = "true";
+                      if (image.name) {
+                        e.target.src = `/assets/${image.name}`;
+                      }
+                    } else {
+                      // Final fallback to placeholder
+                      e.target.src = "https://via.placeholder.com/300x200?text=Image+Preview";
+                    }
+                  }}
+                />
+              ) : (
+                <Typography color="text.secondary">No image preview available</Typography>
+              )}
+            </Box>          <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+            {image.isCloudFile || image.source === "cloud-storage" || image.type === "cloud-image" ? (
               // Cloud file
               <>
                 <Cloud sx={{ color: theme.palette.primary.main, mr: 1 }} />
                 <Typography variant="body2" color="text.secondary">
                   {image.name} (Cloud Storage)
+                </Typography>
+              </>
+            ) : (
+              // Local file
+              <>
+                <CloudDone sx={{ color: "success.main", mr: 1 }} />
+                <Typography variant="body2" color="text.secondary">
+                  {image.name} ({image.size ? (image.size / 1024).toFixed(1) : "?"} KB)
                 </Typography>
               </>
             )}
@@ -208,7 +250,7 @@ const ImageUploader = ({ onImageSelected }) => {
         <Box sx={{ display: "flex", justifyContent: "center", mt: 1, gap: 2 }}>
           <Button
             variant="outlined"
-            startIcon={<Image />}
+            startIcon={<ImageIcon />}
             onClick={() => fileInputRef.current.click()}
             sx={{ mt: 1 }}
           >

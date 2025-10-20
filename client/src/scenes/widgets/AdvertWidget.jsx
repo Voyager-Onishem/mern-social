@@ -1,5 +1,5 @@
 
-import { Typography, useTheme } from "@mui/material";
+import { Typography, useTheme, Box } from "@mui/material";
 import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -54,13 +54,62 @@ const AdvertWidget = () => {
           Create Ad
         </Typography>
       </FlexBetween>
-      <img
-        width="100%"
-        height="auto"
-        alt="advert"
-        src={`${API_URL}/assets/${adData.picturePath}`}
-        style={{ borderRadius: "0.75rem", margin: "0.75rem 0" }}
-      />
+      {/* Ad Image with multiple fallback strategies */}
+      <Box
+        sx={{
+          width: '100%',
+          height: '200px',
+          borderRadius: '0.75rem',
+          margin: '0.75rem 0',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          overflow: 'hidden',
+          backgroundColor: 'rgba(0, 0, 0, 0.03)',
+        }}
+      >
+        <img
+          width="100%"
+          height="auto"
+          alt="advert"
+          src={`${API_URL}/assets/${adData.picturePath}`}
+          style={{ 
+            borderRadius: "0.75rem",
+            objectFit: "cover",
+            maxHeight: "100%"
+          }}
+          onError={(e) => {
+            console.warn(`Ad image failed to load from API: ${adData.picturePath}`);
+            
+            // First fallback: Try without the API URL, just the relative path
+            if (!e.target.dataset.triedAlternate) {
+              e.target.dataset.triedAlternate = "true";
+              e.target.src = `/assets/${adData.picturePath}`;
+              return;
+            }
+            
+            // Second fallback: Try without the assets folder
+            if (!e.target.dataset.triedSecondAlternate) {
+              e.target.dataset.triedSecondAlternate = "true";
+              e.target.src = `/${adData.picturePath}`;
+              return;
+            }
+            
+            // Third fallback: Try one of our known good sample images
+            if (!e.target.dataset.triedSampleImage) {
+              e.target.dataset.triedSampleImage = "true";
+              // Pick a random sample image from our known working images
+              const sampleImages = ["info1.jpeg", "info2.jpeg", "info3.jpeg", "info4.jpeg"];
+              const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
+              e.target.src = `${API_URL}/assets/${randomImage}`;
+              return;
+            }
+            
+            // Final fallback: Use a placeholder image service
+            e.target.src = "https://via.placeholder.com/600x400?text=Ad+Image";
+          }}
+        />
+      </Box>
       <FlexBetween>
         <Typography color={main}>{adData.title}</Typography>
         <a 

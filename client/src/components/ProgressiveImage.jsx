@@ -11,7 +11,7 @@ const ProgressiveImage = ({ src, alt, style, onClick }) => {
     setImageLoaded(false);
     setImageSrc('');
     
-    const img = new Image();
+    const img = new window.Image();
     img.src = src;
     img.onload = () => {
       setImageSrc(src);

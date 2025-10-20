@@ -86,7 +86,12 @@ const Friend = ({ friendId, name, subtitle, location, locationCoords, timestamp,
               </Box>
             )}
           </Typography>
-          <Typography color={medium} fontSize="0.75rem" sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}>
+          <Typography 
+            component="div" 
+            color={medium} 
+            fontSize="0.75rem" 
+            sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}
+          >
             {location && (
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Tooltip title="View on Google Maps" arrow>

@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-// Sample initial ads for demonstration
-const initialState = [
+// Default ads for demonstration
+const defaultAds = [
   {
     id: "1",
     title: "MikaCosmetics",
@@ -25,15 +25,31 @@ const initialState = [
   }
 ];
 
+// Load saved ads from localStorage or use default ads
+const loadAdsFromStorage = () => {
+  try {
+    const savedAds = localStorage.getItem('ads');
+    return savedAds ? JSON.parse(savedAds) : defaultAds;
+  } catch (error) {
+    console.error('Error loading ads from localStorage:', error);
+    return defaultAds;
+  }
+};
+
+const initialState = loadAdsFromStorage();
+
 export const adsSlice = createSlice({
   name: "ads",
   initialState,
   reducers: {
     setAds: (state, action) => {
-      return action.payload;
+      const newState = action.payload;
+      localStorage.setItem('ads', JSON.stringify(newState));
+      return newState;
     },
     addAd: (state, action) => {
       state.push(action.payload);
+      localStorage.setItem('ads', JSON.stringify(state));
     }
   }
 });
@@ -57,13 +73,35 @@ export const createAd = (adData) => async (dispatch) => {
     // In a real app, this would be an API call
     // For now, we'll just add the ad locally
     // Example: const response = await fetch("/api/ads", { method: "POST", body: JSON.stringify(adData) });
+    
+    // Validate and sanitize image path
+    let sanitizedPicturePath = adData.picturePath;
+    
+    // Make sure we have a valid picture path
+    if (!sanitizedPicturePath) {
+      // Default to a known working image
+      sanitizedPicturePath = "info1.jpeg";
+    }
+    
+    // Remove any path prefixes if they exist
+    if (sanitizedPicturePath.includes('/')) {
+      sanitizedPicturePath = sanitizedPicturePath.split('/').pop();
+    }
+    
+    // Create a new ad with a unique ID and sanitized path
     const newAd = {
       id: Date.now().toString(),
-      ...adData
+      ...adData,
+      picturePath: sanitizedPicturePath
     };
+    
+    console.log("Creating new ad:", newAd);
     dispatch(addAd(newAd));
+    
+    return newAd; // Return the created ad
   } catch (error) {
     console.error("Error creating ad:", error);
+    throw error;
   }
 };
 

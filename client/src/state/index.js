@@ -1,20 +1,44 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = {
-  mode: "light",
-  user: null,
-  token: null,
-  posts: [],
-  postsLoading: false,
-  sessionSeenPostIds: {}, // Feature 26: track which post IDs have been counted locally this session
-  pagination: {
-    page: 1,
-    limit: 10,
-    total: 0,
-    pages: 0,
-    hasMore: false
-  },
+// Initialize with data from localStorage if available
+const loadInitialState = () => {
+  try {
+    return {
+      mode: localStorage.getItem("mode") || "light",
+      user: JSON.parse(localStorage.getItem("user")) || null,
+      token: localStorage.getItem("token") || null,
+      posts: [],
+      postsLoading: false,
+      sessionSeenPostIds: {}, // Feature 26: track which post IDs have been counted locally this session
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 0,
+        pages: 0,
+        hasMore: false
+      },
+    };
+  } catch (error) {
+    console.error("Error loading state from localStorage:", error);
+    return {
+      mode: "light",
+      user: null,
+      token: null,
+      posts: [],
+      postsLoading: false,
+      sessionSeenPostIds: {},
+      pagination: {
+        page: 1,
+        limit: 10,
+        total: 0,
+        pages: 0,
+        hasMore: false
+      },
+    };
+  }
 };
+
+const initialState = loadInitialState();
 
 export const authSlice = createSlice({
   name: "auth",
@@ -22,14 +46,21 @@ export const authSlice = createSlice({
   reducers: {
     setMode: (state) => {
       state.mode = state.mode === "light" ? "dark" : "light";
+      localStorage.setItem("mode", state.mode);
     },
     setLogin: (state, action) => {
       state.user = action.payload.user;
       state.token = action.payload.token;
+      // Persist auth info to local storage
+      localStorage.setItem("user", JSON.stringify(action.payload.user));
+      localStorage.setItem("token", action.payload.token);
     },
     setLogout: (state) => {
       state.user = null;
       state.token = null;
+      // Clear persisted auth info
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
     },
     setFriends: (state, action) => {
       if (state.user) {

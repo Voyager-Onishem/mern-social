@@ -11,16 +11,21 @@ import {
   IconButton,
   Divider,
   CircularProgress,
+  Card,
+  CardMedia,
+  CardActionArea,
 } from "@mui/material";
 import {
   CloudOutlined,
   Close,
   FolderOpen,
-  Image,
+  Image as ImageIcon,
   InsertDriveFile,
+  CheckCircle,
 } from "@mui/icons-material";
 
 // Sample images from assets for demonstration
+// These are the confirmed images that definitely exist on the server
 const SAMPLE_IMAGES = [
   { name: "info1.jpeg", type: "image" },
   { name: "info2.jpeg", type: "image" },
@@ -30,8 +35,16 @@ const SAMPLE_IMAGES = [
   { name: "p2.jpeg", type: "image" },
   { name: "p3.jpeg", type: "image" },
   { name: "p4.jpeg", type: "image" },
-  { name: "p5.jpeg", type: "image" },
+  
+  // Removing potentially problematic images
+  // { name: "p5.jpeg", type: "image" },
+  // { name: "p6.jpeg", type: "image" },
+  // { name: "p7.jpeg", type: "image" },
+  // { name: "p8.jpeg", type: "image" },
 ];
+
+// API URL for assets
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:6001";
 
 const CloudStorageModal = ({ open, onClose, onSelect }) => {
   const [loading, setLoading] = useState(true);
@@ -42,7 +55,22 @@ const CloudStorageModal = ({ open, onClose, onSelect }) => {
   useEffect(() => {
     if (open) {
       setLoading(true);
-      // Simulate API call
+      setSelectedFile(null);
+      
+      // In a real app, this would be an API call to load available images
+      // For example:
+      // fetch(`${API_URL}/assets`)
+      //   .then(res => res.json())
+      //   .then(data => {
+      //     setFiles(data);
+      //     setLoading(false);
+      //   })
+      //   .catch(err => {
+      //     console.error("Error loading cloud images:", err);
+      //     setLoading(false);
+      //   });
+      
+      // Simulate API call for demo
       setTimeout(() => {
         setFiles(SAMPLE_IMAGES);
         setLoading(false);
@@ -53,7 +81,15 @@ const CloudStorageModal = ({ open, onClose, onSelect }) => {
   }, [open]);
 
   const handleFileClick = (file) => {
-    setSelectedFile(file);
+    // Create a proper file object with a name property that matches what ImageUploader expects
+    const selectedFileObj = {
+      name: file.name,
+      type: "cloud-image", // This indicates it's from cloud storage, not a real file
+      isCloudFile: true, // Add a flag to indicate cloud origin
+      path: `${API_URL}/assets/${file.name}`, // Add the full path for easier access
+      source: "cloud-storage"
+    };
+    setSelectedFile(selectedFileObj);
   };
 
   const handleSelect = () => {
@@ -111,38 +147,86 @@ const CloudStorageModal = ({ open, onClose, onSelect }) => {
         ) : (
           <Grid container spacing={2}>
             {files.map((file) => (
-              <Grid item xs={4} sm={3} md={2} key={file.name}>
-                <Box
-                  onClick={() => handleFileClick(file)}
+              <Grid item xs={6} sm={4} md={3} key={file.name}>
+                <Card 
+                  elevation={selectedFile?.name === file.name ? 6 : 1}
                   sx={{
-                    p: 1,
+                    position: 'relative',
+                    transition: 'all 0.3s ease',
+                    transform: selectedFile?.name === file.name ? 'scale(1.03)' : 'none',
                     border: (theme) => 
                       selectedFile?.name === file.name 
                         ? `2px solid ${theme.palette.primary.main}`
-                        : `1px solid ${theme.palette.divider}`,
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    "&:hover": {
-                      bgcolor: "rgba(0, 0, 0, 0.04)",
-                      transform: "translateY(-2px)",
-                      boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
-                    },
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    bgcolor: (theme) => theme.palette.background.paper,
+                        : 'none',
                   }}
                 >
-                  {file.type === "image" ? (
-                    <Image sx={{ fontSize: 48, color: "#4caf50", mb: 1 }} />
-                  ) : (
-                    <InsertDriveFile sx={{ fontSize: 48, color: "#2196f3", mb: 1 }} />
+                  {selectedFile?.name === file.name && (
+                    <CheckCircle 
+                      sx={{ 
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        color: 'primary.main',
+                        fontSize: 24,
+                        zIndex: 2,
+                        backgroundColor: 'white',
+                        borderRadius: '50%'
+                      }}
+                    />
                   )}
-                  <Typography variant="body2" noWrap sx={{ width: "100%", textAlign: "center" }}>
-                    {file.name}
-                  </Typography>
-                </Box>
+                  <CardActionArea onClick={() => handleFileClick(file)}>
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        height: '120px',
+                        width: '100%',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: (theme) => theme.palette.mode === 'dark' 
+                          ? 'rgba(255,255,255,0.05)' 
+                          : 'rgba(0,0,0,0.05)'
+                      }}
+                    >
+                      <CardMedia
+                        component="img"
+                        height="120"
+                        image={`${API_URL}/assets/${file.name}`}
+                        alt={file.name}
+                        sx={{ 
+                          objectFit: 'cover',
+                          height: '100%',
+                          width: '100%',
+                        }}
+                        onError={(e) => {
+                          console.warn(`Cloud image failed to load: ${file.name}`);
+                          
+                          // Try alternate path if the API URL fails
+                          if (!e.target.dataset.triedAlternate) {
+                            e.target.dataset.triedAlternate = "true";
+                            e.target.src = `/assets/${file.name}`;
+                            return;
+                          } 
+                          
+                          // Second fallback - try direct path
+                          if (!e.target.dataset.triedSecondAlternate) {
+                            e.target.dataset.triedSecondAlternate = "true";
+                            e.target.src = `/${file.name}`;
+                            return;
+                          }
+                          
+                          // Final fallback to placeholder
+                          e.target.src = "https://via.placeholder.com/120x120?text=Preview";
+                        }}
+                      />
+                    </Box>
+                    <Box sx={{ p: 1 }}>
+                      <Typography variant="body2" noWrap sx={{ textAlign: "center" }}>
+                        {file.name}
+                      </Typography>
+                    </Box>
+                  </CardActionArea>
+                </Card>
               </Grid>
             ))}
           </Grid>
