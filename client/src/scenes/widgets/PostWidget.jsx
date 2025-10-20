@@ -274,6 +274,11 @@ const PostWidget = forwardRef(({
       optimisticLikes[loggedInUserId] = true;
     }
     
+    // Extract firstName and lastName from name prop
+    const nameParts = name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
     // Create an optimistically updated post object
     const optimisticPost = {
       _id: postId,
