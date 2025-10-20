@@ -10,7 +10,9 @@ import {
   useTheme,
   Paper,
 } from "@mui/material";
+import { AddCircle } from "@mui/icons-material";
 import { createAd } from "state/adsSlice";
+import ImageUploader from "components/ImageUploader";
 
 const CreateAdPage = () => {
   const theme = useTheme();
@@ -25,6 +27,8 @@ const CreateAdPage = () => {
     description: "",
     picturePath: ""
   });
+
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const [errors, setErrors] = useState({
     title: "",
@@ -48,6 +52,28 @@ const CreateAdPage = () => {
     }
   };
 
+  const handleImageSelected = (imageFile) => {
+    if (imageFile) {
+      // Update form data with the file name, which will be processed server-side
+      setFormData(prev => ({
+        ...prev,
+        picturePath: imageFile.name
+      }));
+      setSelectedImage(imageFile);
+      // Clear any existing error
+      setErrors(prev => ({
+        ...prev,
+        picturePath: ""
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        picturePath: ""
+      }));
+      setSelectedImage(null);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
@@ -60,7 +86,7 @@ const CreateAdPage = () => {
         : formData.description.length > 100 
           ? "Description must be 100 characters or less"
           : "",
-      picturePath: !formData.picturePath ? "Picture path is required" : "",
+      picturePath: !selectedImage ? "Please upload an image" : "",
     };
 
     setErrors(newErrors);
@@ -70,8 +96,17 @@ const CreateAdPage = () => {
       return;
     }
 
+    // In a real implementation, we would upload the image here
+    // and then create the ad with the uploaded image path
+    
+    // For now, we'll just use the filename
+    const adData = {
+      ...formData,
+      picturePath: selectedImage.name
+    };
+
     // Dispatch action to add new ad
-    dispatch(createAd(formData));
+    dispatch(createAd(adData));
     
     // Navigate back to home
     navigate("/");
@@ -83,11 +118,35 @@ const CreateAdPage = () => {
         width="100%"
         backgroundColor={theme.palette.background.alt}
         p="1rem 6%"
-        textAlign="center"
+        sx={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center" 
+        }}
       >
-        <Typography fontWeight="bold" fontSize="32px" color="primary">
+        <Typography
+          fontWeight="bold"
+          fontSize="clamp(1rem, 2rem, 2.25rem)"
+          color="primary"
+          onClick={() => navigate("/home")}
+          sx={{
+            "&:hover": {
+              color: theme.palette.primary.light,
+              cursor: "pointer",
+            },
+          }}
+        >
+          Alucon
+        </Typography>
+        <Typography 
+          variant="h4" 
+          fontWeight="500" 
+          color={theme.palette.neutral.main}
+        >
           Create Advertisement
         </Typography>
+        <Box width="clamp(1rem, 2rem, 2.25rem)"> {/* Empty box for spacing balance */}
+        </Box>
       </Box>
 
       <Box
@@ -137,35 +196,28 @@ const CreateAdPage = () => {
             fullWidth
           />
           
-          <TextField
-            label="Picture Path (e.g., info3.jpeg)"
-            name="picturePath"
-            value={formData.picturePath}
-            onChange={handleChange}
-            error={!!errors.picturePath}
-            helperText={errors.picturePath || "Use an image from the assets folder"}
-            sx={{ mb: 2 }}
-            fullWidth
-          />
-          
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Available images in assets: info1.jpeg, info2.jpeg, info3.jpeg, info4.jpeg, p1.jpeg through p13.jpeg
+          <ImageUploader onImageSelected={handleImageSelected} />
+          {errors.picturePath && (
+            <Typography color="error" variant="body2" sx={{ mt: -1, mb: 2 }}>
+              {errors.picturePath}
             </Typography>
-          </Box>
+          )}
 
           <Button
             fullWidth
             type="submit"
+            startIcon={<AddCircle />}
             sx={{
               m: "2rem 0",
               p: "1rem",
               backgroundColor: palette.primary.main,
               color: palette.background.alt,
               "&:hover": { color: palette.primary.main },
+              fontSize: "1rem",
+              fontWeight: "600"
             }}
           >
-            CREATE AD
+            CREATE ADVERTISEMENT
           </Button>
         </form>
       </Box>
