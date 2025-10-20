@@ -11,6 +11,7 @@ import {
 import { Box, Skeleton, CircularProgress, Typography } from '@mui/material';
 import { useSearchParams } from "react-router-dom";
 import PostWidget from "./PostWidget";
+import AnimatedPostEntry from "components/AnimatedPostEntry";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -24,6 +25,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   const targetPostId = searchParams.get("post");
   const targetPostRef = useRef({});
   const loaderRef = useRef(null);
+  const postsContainerRef = useRef(null);
   
   // Track if we're loading the initial page or additional pages
   const [initialLoading, setInitialLoading] = useState(true);
@@ -33,6 +35,10 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   const touchStartY = useRef(0);
   const touchEndY = useRef(0);
   const MIN_PULL_DISTANCE = 100;
+  
+  // Scroll position memory
+  const scrollPositionKey = `scrollPosition_${isProfile ? userId : 'feed'}`;
+  const previousScrollPosition = useRef(parseInt(sessionStorage.getItem(scrollPositionKey) || '0'));
 
   const getPosts = async (page = 1, append = false) => {
     if (loading) return;
@@ -155,14 +161,16 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   useEffect(() => {
     const options = {
       root: null,
-      rootMargin: "20px",
+      // Increase rootMargin to load more aggressively before user reaches the end
+      // This makes the experience more seamless as new posts are loaded before user reaches the bottom
+      rootMargin: "500px", // Load when within 500px of the bottom
       threshold: 0.1
     };
     
     const handleObserver = (entries) => {
       const target = entries[0];
       if (target.isIntersecting && pagination.hasMore && !loading && !initialLoading) {
-        // Load next page
+        // Calculate how many pages to potentially preload based on scroll speed
         const nextPage = pagination.page + 1;
         if (isProfile) {
           getUserPosts(nextPage, true);
@@ -183,6 +191,34 @@ const PostsWidget = ({ userId, isProfile = false }) => {
       }
     };
   }, [pagination.hasMore, pagination.page, loading, initialLoading, isProfile]);
+  
+  // Scroll position restoration & memory
+  useEffect(() => {
+    // Save scroll position when unmounting
+    const handleScroll = () => {
+      sessionStorage.setItem(scrollPositionKey, window.scrollY.toString());
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    
+    // Restore scroll position after initial load
+    if (!initialLoading && posts.length > 0 && previousScrollPosition.current > 0) {
+      // Short delay to ensure posts are rendered
+      setTimeout(() => {
+        window.scrollTo({
+          top: previousScrollPosition.current,
+          behavior: 'auto'
+        });
+        previousScrollPosition.current = 0; // Reset after use
+      }, 100);
+    }
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      // Save position when unmounting
+      sessionStorage.setItem(scrollPositionKey, window.scrollY.toString());
+    };
+  }, [initialLoading, posts.length, scrollPositionKey]);
   
   // Handle pull-to-refresh for mobile
   const handleTouchStart = (e) => {
@@ -391,33 +427,60 @@ const PostsWidget = ({ userId, isProfile = false }) => {
           createdAt,
           impressions,
           mediaPaths
-        }) => (
-          <PostWidget
-            key={_id}
-            postId={_id}
-            postUserId={userId}
-            name={`${firstName} ${lastName}`}
-            description={description}
-            location={location}
-            picturePath={picturePath}
-            audioPath={audioPath}
-            mediaPaths={mediaPaths}
-            userPicturePath={userPicturePath}
-            likes={likes}
-            comments={comments}
-            createdAt={createdAt}
-            impressions={impressions}
-            ref={targetPostId === _id ? (el) => { 
-              if (el) targetPostRef.current[_id] = el; 
-            } : undefined}
-          />
+        }, index) => (
+          <AnimatedPostEntry key={_id} index={index}>
+            <PostWidget
+              postId={_id}
+              postUserId={userId}
+              name={`${firstName} ${lastName}`}
+              description={description}
+              location={location}
+              picturePath={picturePath}
+              audioPath={audioPath}
+              mediaPaths={mediaPaths}
+              userPicturePath={userPicturePath}
+              likes={likes}
+              comments={comments}
+              createdAt={createdAt}
+              impressions={impressions}
+              ref={targetPostId === _id ? (el) => { 
+                if (el) targetPostRef.current[_id] = el; 
+              } : undefined}
+            />
+          </AnimatedPostEntry>
         )
       )}
       
-      {/* Loading indicator for more posts */}
+      {/* Enhanced loading indicator for more posts */}
       {loading && !initialLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-          <CircularProgress size={30} />
+        <Box sx={{ my: 2 }}>
+          {/* Use skeleton placeholders that look like posts being loaded */}
+          {Array.from({ length: 1 }).map((_, i) => (
+            <Box key={i} sx={{ 
+              mb: 3, 
+              p: 2, 
+              bgcolor: 'background.paper',
+              borderRadius: '0.75rem',
+              boxShadow: 3,
+              animation: 'pulse 1.5s infinite ease-in-out',
+              '@keyframes pulse': {
+                '0%': { opacity: 0.6 },
+                '50%': { opacity: 0.8 },
+                '100%': { opacity: 0.6 },
+              }
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Skeleton variant="circular" width={50} height={50} sx={{ mr: 2 }} />
+                <Box sx={{ width: '100%' }}>
+                  <Skeleton variant="text" width="40%" height={24} sx={{ mb: 0.5 }} />
+                  <Skeleton variant="text" width="25%" height={16} />
+                </Box>
+              </Box>
+              <Skeleton variant="text" width="90%" />
+              <Skeleton variant="text" width="95%" />
+              <Skeleton variant="rectangular" height={200} sx={{ mt: 1.5, borderRadius: 1 }} />
+            </Box>
+          ))}
         </Box>
       )}
       

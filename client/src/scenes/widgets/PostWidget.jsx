@@ -11,6 +11,8 @@ import Comment from "components/Comment";
 import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
+import ProgressiveImage from "components/ProgressiveImage";
+import AnimatedLikeButton from "components/AnimatedLikeButton";
 import React, { useState, useRef, forwardRef, useEffect } from "react";
 import { extractFirstGiphyUrl, isGiphyUrl, extractGiphyUrls } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
@@ -259,8 +261,40 @@ const PostWidget = forwardRef(({
     setCommentGifUrls(prev => prev.filter(u => u !== gifUrl));
   }
 
-  // Like handler
+  // Like handler with optimistic updates
   const patchLike = async () => {
+    // Create optimistic update for instant feedback
+    const optimisticLikes = { ...normalizedLikes };
+    
+    if (isLiked) {
+      // Optimistically remove the like
+      delete optimisticLikes[loggedInUserId];
+    } else {
+      // Optimistically add the like
+      optimisticLikes[loggedInUserId] = true;
+    }
+    
+    // Create an optimistically updated post object
+    const optimisticPost = {
+      _id: postId,
+      userId: postUserId,
+      firstName,
+      lastName,
+      description,
+      location,
+      picturePath,
+      audioPath,
+      mediaPaths,
+      userPicturePath,
+      likes: optimisticLikes,
+      comments: currentComments,
+      createdAt,
+      impressions,
+    };
+    
+    // Immediately update UI (optimistically)
+    dispatch(setPost({ post: optimisticPost }));
+    
     try {
       const response = await fetch(`${API_URL}/posts/${postId}/like`, {
         method: "PATCH",
@@ -271,13 +305,26 @@ const PostWidget = forwardRef(({
         body: JSON.stringify({ userId: loggedInUserId }),
       });
       const updatedPost = await response.json().catch(() => ({}));
+      
       if (!response.ok || !updatedPost?._id) {
+        // Revert to original state if request fails
         setErrorSnack({ open: true, message: updatedPost?.message || 'Failed to like post' });
+        dispatch(setPost({ post: {
+          _id: postId,
+          likes: normalizedLikes,
+        } }));
         return;
       }
+      
+      // Update with actual server response
       dispatch(setPost({ post: updatedPost }));
     } catch (e) {
+      // Revert to original state on error
       setErrorSnack({ open: true, message: 'Network error liking post' });
+      dispatch(setPost({ post: {
+        _id: postId,
+        likes: normalizedLikes,
+      } }));
     }
   };
 
@@ -356,9 +403,9 @@ const PostWidget = forwardRef(({
       })()}
       {/* Render mediaPaths if any; else fall back to legacy picturePath */}
       {(Array.isArray(mediaPaths) && mediaPaths.length > 0) || picturePath ? (
-        <Box ref={mediaRef} sx={{ position: 'relative', minHeight: '150px', mt: 1 }}>
+        <Box ref={mediaRef} sx={{ position: 'relative', mt: 1 }}>
           {!mediaLoaded ? (
-            // Show skeleton while media is loading
+            // Show skeleton while media is not in viewport
             <Skeleton 
               variant="rectangular" 
               height={280} 
@@ -366,7 +413,7 @@ const PostWidget = forwardRef(({
               sx={{ borderRadius: "0.75rem" }}
             />
           ) : (
-            // Once in viewport and loaded, show the actual media
+            // Once in viewport, load the actual media with progressive loading
             Array.isArray(mediaPaths) && mediaPaths.length > 0 ? (
               <Box display="flex" flexDirection="column" gap={1}>
                 {mediaPaths.map((mp, idx) => {
@@ -379,8 +426,13 @@ const PostWidget = forwardRef(({
                       <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
                     </Box>
                   ) : (
-                    <Box key={idx} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }} sx={{ cursor: 'pointer' }}>
-                      <img width="100%" height="auto" loading="lazy" alt={`media-${idx}`} style={{ borderRadius: "0.75rem" }} src={src} />
+                    <Box key={idx}>
+                      <ProgressiveImage 
+                        src={src}
+                        alt={`media-${idx}`}
+                        style={{ borderRadius: "0.75rem" }}
+                        onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }}
+                      />
                     </Box>
                   );
                 })}
@@ -395,7 +447,12 @@ const PostWidget = forwardRef(({
                     <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
                   </Box>
                 ) : (
-                  <img width="100%" height="auto" loading="lazy" alt="post" style={{ borderRadius: "0.75rem", marginTop: "0.75rem", cursor: 'pointer' }} src={src} onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }} />
+                  <ProgressiveImage 
+                    src={src}
+                    alt="post"
+                    style={{ borderRadius: "0.75rem", marginTop: "0.75rem" }}
+                    onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
+                  />
                 );
               })()
             ) : null
@@ -410,13 +467,11 @@ const PostWidget = forwardRef(({
       <FlexBetween mt="0.25rem">
         <FlexBetween gap="1rem">
           <FlexBetween gap="0.3rem">
-            <IconButton onClick={patchLike} aria-label={isLiked ? 'Unlike post' : 'Like post'}>
-              {isLiked ? (
-                <FavoriteOutlined sx={{ color: primary }} />
-              ) : (
-                <FavoriteBorderOutlined />
-              )}
-            </IconButton>
+            <AnimatedLikeButton 
+              isLiked={isLiked}
+              onClick={patchLike}
+              color={primary}
+            />
             <Typography>{likeCount}</Typography>
           </FlexBetween>
 
