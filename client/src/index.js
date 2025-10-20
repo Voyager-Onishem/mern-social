@@ -3,34 +3,10 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import { NotificationProvider } from "components/NotificationProvider";
-import authReducer from "./state";
-import { configureStore } from "@reduxjs/toolkit";
+import store from "./state/store";
 import { Provider } from "react-redux";
-import {
-  persistStore,
-  persistReducer,
-  FLUSH,
-  REHYDRATE,
-  PAUSE,
-  PERSIST,
-  PURGE,
-  REGISTER,
-} from "redux-persist";
-import storage from "redux-persist/lib/storage";
+import { persistStore } from "redux-persist";
 import { PersistGate } from "redux-persist/integration/react";
-
-const persistConfig = { key: "root", storage, version: 1 };
-const persistedReducer = persistReducer(persistConfig, authReducer);
-const store = configureStore({
-  reducer: persistedReducer,
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-      },
-    }),
-});
-
 // Expose store for non-hook utility logic (e.g., IntersectionObserver in PostsWidget) - limited use
 if (typeof window !== 'undefined') {
   window.__APP_STORE__ = store;

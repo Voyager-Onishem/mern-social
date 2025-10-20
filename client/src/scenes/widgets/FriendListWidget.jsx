@@ -10,8 +10,8 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:6001";
 const FriendListWidget = ({ userId }) => {
   const dispatch = useDispatch();
   const { palette } = useTheme();
-  const token = useSelector((state) => state.token);
-  const friends = useSelector((state) => state.user.friends);
+  const token = useSelector((state) => state.auth?.token);
+  const friends = useSelector((state) => state.auth?.user?.friends || []);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

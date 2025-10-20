@@ -34,8 +34,8 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
   const [serverStatus, setServerStatus] = useState("unknown"); // "online", "offline", "unknown"
   const { palette } = useTheme();
   const navigate = useNavigate();
-  const token = useSelector((state) => state.token);
-  const loggedUser = useSelector((state) => state.user);
+  const token = useSelector((state) => state.auth?.token);
+  const loggedUser = useSelector((state) => state.auth?.user);
   const dispatch = useDispatch();
   const dark = palette.neutral.dark;
   const medium = palette.neutral.medium;

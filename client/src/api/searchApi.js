@@ -11,7 +11,7 @@ export const searchApi = async (query) => {
     if (window.__APP_STORE__) {
       try {
         const state = window.__APP_STORE__.getState();
-        token = state.token;
+        token = state.auth?.token;
         console.log("Got token from Redux store via window.__APP_STORE__");
       } catch (e) {
         console.error("Error accessing Redux store:", e.message);

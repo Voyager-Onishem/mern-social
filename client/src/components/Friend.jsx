@@ -12,9 +12,9 @@ const API_URL = process.env.REACT_APP_API_URL;
 const Friend = ({ friendId, name, subtitle, location, locationCoords, timestamp, userPicturePath, onFriendToggled }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { _id } = useSelector((state) => state.user);
-  const token = useSelector((state) => state.token);
-  const friends = useSelector((state) => state.user.friends);
+  const { _id } = useSelector((state) => state.auth?.user || {});
+  const token = useSelector((state) => state.auth?.token);
+  const friends = useSelector((state) => state.auth?.user?.friends || []);
 
   const { palette } = useTheme();
   const primaryLight = palette.primary.light;

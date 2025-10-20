@@ -8,5 +8,5 @@ export const getCurrentToken = () => {
   }
   
   const state = store.getState();
-  return state.token;
+  return state.auth?.token;
 };

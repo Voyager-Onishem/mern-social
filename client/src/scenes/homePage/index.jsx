@@ -13,7 +13,7 @@ import DiagnosticsWidget from "components/DiagnosticsWidget";
 
 const HomePage = () => {
   const isNonMobileScreens = useMediaQuery("(min-width:1000px)");
-  const user = useSelector((state) => state.user);
+  const user = useSelector((state) => state.auth?.user); // Updated to use auth.user
   const { _id, picturePath } = user || {};
   const location = useLocation();
   const [showDiagnostics, setShowDiagnostics] = useState(true);

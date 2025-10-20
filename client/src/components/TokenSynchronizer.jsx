@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
 const TokenSynchronizer = () => {
-  const token = useSelector((state) => state.token);
+  const token = useSelector((state) => state.auth?.token);
   
   // When token changes in Redux, update localStorage
   useEffect(() => {

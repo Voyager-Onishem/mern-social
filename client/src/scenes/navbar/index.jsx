@@ -39,7 +39,7 @@ const Navbar = () => {
   const [isMobileMenuToggled, setIsMobileMenuToggled] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const user = useSelector((state) => state.user);
+  const user = useSelector((state) => state.auth?.user); // Updated to use auth.user
   const isNonMobileScreens = useMediaQuery("(min-width: 1000px)");
 
   // Search state
@@ -57,7 +57,8 @@ const Navbar = () => {
   const primaryLight = theme.palette.primary.light;
   const alt = theme.palette.background.alt;
 
-  const fullName = `${user.firstName} ${user.lastName}`;
+  // Safely access user properties with optional chaining
+  const fullName = user ? `${user.firstName || ''} ${user.lastName || ''}` : "User";
   const [showFloatingPost, setShowFloatingPost] = useState(false);
   const [openPostModal, setOpenPostModal] = useState(false);
 

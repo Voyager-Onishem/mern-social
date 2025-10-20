@@ -12,7 +12,7 @@ const SearchDiagnosticWidget = () => {
   const [apiDetail, setApiDetail] = useState("");
   
   // Get token from Redux store to verify it's available
-  const token = useSelector((state) => state.token);
+  const token = useSelector((state) => state.auth?.token);
   const [tokenDebugInfo, setTokenDebugInfo] = useState("");
 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:6001";
@@ -44,7 +44,7 @@ const SearchDiagnosticWidget = () => {
       debugInfo += "window.__APP_STORE__: Present\n";
       try {
         const state = window.__APP_STORE__.getState();
-        debugInfo += `Store state has token: ${state.token ? "Yes" : "No"}\n`;
+        debugInfo += `Store state has token: ${state.auth?.token ? "Yes" : "No"}\n`;
       } catch (e) {
         debugInfo += `Error reading from store: ${e.message}\n`;
       }

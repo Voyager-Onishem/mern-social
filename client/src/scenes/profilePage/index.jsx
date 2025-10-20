@@ -14,8 +14,8 @@ const API_URL = process.env.REACT_APP_API_URL;
 const ProfilePage = () => {
   const [user, setUser] = useState(null);
   const { userId } = useParams();
-  const token = useSelector((state) => state.token);
-  const loggedInUser = useSelector((state) => state.user);
+  const token = useSelector((state) => state.auth?.token);
+  const loggedInUser = useSelector((state) => state.auth?.user);
   const navigate = useNavigate();
   const isNonMobileScreens = useMediaQuery("(min-width:1000px)");
   const [searchParams] = useSearchParams();

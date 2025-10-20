@@ -66,8 +66,8 @@ const PostWidget = forwardRef(({
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState(null);
   const dispatch = useDispatch();
-  const token = useSelector((state) => state.token);
-  const loggedInUserId = useSelector((state) => state.user._id);
+  const token = useSelector((state) => state.auth?.token);
+  const loggedInUserId = useSelector((state) => state.auth?.user?._id);
   // Normalize likes in case backend sent a Map or null
   const normalizedLikes = (() => {
     if (!likes) return {};

@@ -7,8 +7,8 @@ import SearchDiagnosticWidget from "./SearchDiagnosticWidget";
 const DiagnosticsWidget = () => {
   const [apiStatus, setApiStatus] = useState("Checking...");
   const [apiDetail, setApiDetail] = useState("");
-  const token = useSelector((state) => state.token);
-  const user = useSelector((state) => state.user);
+  const token = useSelector((state) => state.auth?.token);
+  const user = useSelector((state) => state.auth?.user);
   const posts = useSelector((state) => state.posts);
 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:6001";

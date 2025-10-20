@@ -17,6 +17,7 @@ import { setLogin } from "state";
 import Dropzone from "react-dropzone";
 import FlexBetween from "components/FlexBetween";
 import PasswordStrengthIndicator, { checkPasswordStrength } from "components/PasswordStrengthIndicator";
+import { logReduxState, logAuthState } from "utils/debugUtils";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -107,8 +108,23 @@ const Form = () => {
         return;
       }
       onSubmitProps.resetForm();
+      
+      // Debugging to check what's returned from the server
+      console.log("Login successful, received:", data);
+      
       dispatch(setLogin({ user: data.user, token: data.token }));
-      navigate("/home");
+      
+      // Log Redux state after dispatching action
+      console.log("Before auth state check...");
+      logReduxState();
+      logAuthState();
+      
+      // Add a small delay to ensure state is updated before navigation
+      setTimeout(() => {
+        console.log("Navigating to home...");
+        logAuthState(); // Log auth state again before navigation
+        navigate("/home");
+      }, 300);
     } catch (e) {
       setSubmitError("Cannot reach server. Please start the API and try again.");
     }

@@ -18,10 +18,16 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 const PostsWidget = ({ userId, isProfile = false }) => {
   const dispatch = useDispatch();
-  const posts = useSelector((state) => state.posts);
-  const token = useSelector((state) => state.token);
-  const loading = useSelector((state) => state.postsLoading);
-  const pagination = useSelector((state) => state.pagination);
+  const posts = useSelector((state) => state.auth?.posts || []);
+  const token = useSelector((state) => state.auth?.token);
+  const loading = useSelector((state) => state.auth?.postsLoading || false);
+  const pagination = useSelector((state) => state.auth?.pagination || {
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 0,
+    hasMore: false
+  });
   const [searchParams] = useSearchParams();
   const targetPostId = searchParams.get("post");
   const targetPostRef = useRef({});
@@ -227,8 +233,8 @@ const PostsWidget = ({ userId, isProfile = false }) => {
     // Define the handler function outside of the IntersectionObserver constructor
     const handleObserver = (entries) => {
       const target = entries[0];
-      if (target.isIntersecting && pagination.hasMore && !loading && !initialLoading) {
-        const nextPage = pagination.page + 1;
+      if (target.isIntersecting && pagination?.hasMore && !loading && !initialLoading) {
+        const nextPage = (pagination?.page || 1) + 1;
         
         // Adaptive loading: Consider scroll speed, direction, and position
         const scrolledPercentage = (window.innerHeight + window.scrollY) / document.body.scrollHeight;

@@ -48,8 +48,8 @@ const MyPostWidget = ({ picturePath }) => {
   const maxSeconds = 60;
   const { palette } = useTheme();
   const notify = useNotify();
-  const { _id } = useSelector((state) => state.user);
-  const token = useSelector((state) => state.token);
+  const { _id } = useSelector((state) => state.auth?.user || {});
+  const token = useSelector((state) => state.auth?.token);
   const isNonMobileScreens = useMediaQuery("(min-width: 1000px)");
   const mediumMain = palette.neutral.mediumMain;
   const medium = palette.neutral.medium;

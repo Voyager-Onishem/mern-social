@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "scenes/homePage";
 import LoginPage from "scenes/loginPage";
 import ProfilePage from "scenes/profilePage";
+import CreateAdPage from "scenes/createAdPage";
 import { useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { addPost, setPost } from 'state';
@@ -14,9 +15,10 @@ import TokenSynchronizer from "components/TokenSynchronizer";
 import NetworkStatusMonitor from "components/NetworkStatusMonitor";
 
 function App() {
-  const mode = useSelector((state) => state.mode);
+  // Updated to access mode and token from the new Redux structure
+  const mode = useSelector((state) => state.auth?.mode || "light");
   const theme = useMemo(() => createTheme(themeSettings(mode)), [mode]);
-  const token = useSelector(state => state.token);
+  const token = useSelector(state => state.auth?.token);
   const dispatch = useDispatch();
 
   const sseBackoffRef = useRef({ attempt: 0, timer: null });
@@ -280,6 +282,14 @@ function App() {
                 element={
                   <RequireAuth>
                     <ProfilePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/create-ad"
+                element={
+                  <RequireAuth>
+                    <CreateAdPage />
                   </RequireAuth>
                 }
               />

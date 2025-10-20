@@ -15,6 +15,7 @@ import postRoutes from "./routes/posts.js";
 import analyticsRoutes from "./routes/analytics.js";
 import searchRoutes from "./routes/search.js";
 import videosRoutes from "./routes/videos.js";
+import pingRoutes from "./routes/ping.js";
 import { register } from "./controllers/auth.js";
 import { createPost } from "./controllers/posts.js";
 import { verifyToken } from "./middleware/auth.js";
@@ -123,6 +124,7 @@ app.use("/posts", postRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/search', searchRoutes);
 app.use('/videos', videosRoutes);
+app.use('/auth', pingRoutes); // Add ping endpoint under /auth/ping
 
 // SSE endpoint for real-time updates
 app.get('/realtime', verifyToken, (req, res) => {

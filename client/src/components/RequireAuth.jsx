@@ -3,7 +3,8 @@ import { useSelector } from "react-redux";
 import React from "react";
 
 const RequireAuth = ({ children }) => {
-  const isAuth = Boolean(useSelector((state) => state.token));
+  // Updated to access token from the new Redux structure
+  const isAuth = Boolean(useSelector((state) => state.auth?.token));
   const location = useLocation();
 
   if (!isAuth) {
