@@ -1,7 +1,7 @@
 // No direct API calls in this file, all handled by widgets already updated.
-import { Box, useMediaQuery } from "@mui/material";
+import { Box, useMediaQuery, Button } from "@mui/material";
 import { useSelector } from "react-redux";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import Navbar from "scenes/navbar";
 import UserWidget from "scenes/widgets/UserWidget";
@@ -9,11 +9,14 @@ import MyPostWidget from "scenes/widgets/MyPostWidget";
 import PostsWidget from "scenes/widgets/PostsWidget";
 import AdvertWidget from "scenes/widgets/AdvertWidget";
 import FriendListWidget from "scenes/widgets/FriendListWidget";
+import DiagnosticsWidget from "components/DiagnosticsWidget";
 
 const HomePage = () => {
   const isNonMobileScreens = useMediaQuery("(min-width:1000px)");
-  const { _id, picturePath } = useSelector((state) => state.user);
+  const user = useSelector((state) => state.user);
+  const { _id, picturePath } = user || {};
   const location = useLocation();
+  const [showDiagnostics, setShowDiagnostics] = useState(true);
 
   // Handle post query parameter and hash for scrolling to specific posts
   useEffect(() => {
@@ -83,6 +86,19 @@ const HomePage = () => {
   return (
     <Box>
       <Navbar />
+      {showDiagnostics && (
+        <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: 2 }}>
+          <DiagnosticsWidget />
+          <Button 
+            variant="outlined" 
+            size="small" 
+            sx={{ mb: 2 }}
+            onClick={() => setShowDiagnostics(false)}
+          >
+            Hide Diagnostics
+          </Button>
+        </Box>
+      )}
       <Box
         width="100%"
         padding="2rem 6%"
@@ -91,15 +107,15 @@ const HomePage = () => {
         justifyContent="space-between"
       >
         <Box flexBasis={isNonMobileScreens ? "26%" : undefined}>
-          <UserWidget userId={_id} picturePath={picturePath} openInlineEdit />
+          {_id && <UserWidget userId={_id} picturePath={picturePath} openInlineEdit />}
         </Box>
         <Box
           flexBasis={isNonMobileScreens ? "42%" : undefined}
           mt={isNonMobileScreens ? undefined : "2rem"}
         >
           <div ref={postWidgetRef} />
-          <MyPostWidget picturePath={picturePath} />
-          <PostsWidget userId={_id} />
+          {picturePath && <MyPostWidget picturePath={picturePath} />}
+          {_id && <PostsWidget userId={_id} />}
         </Box>
         {isNonMobileScreens && (
           <Box flexBasis="26%">

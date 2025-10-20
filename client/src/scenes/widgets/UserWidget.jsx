@@ -218,10 +218,10 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
     location,
     occupation,
     viewedProfile, // legacy field
-  impressions, // legacy placeholder (ignored in favor of aggregated total)
+    impressions, // legacy placeholder (ignored in favor of aggregated total)
     profileViewsTotal,
-    friends,
-  } = user;
+    friends = [], // Default to empty array if undefined
+  } = user || {}; // Default to empty object if user is null
 
   // helpers for social link formatting (lightweight, inline – avoids extra deps)
   const ensureHttps = (url) => {
@@ -272,7 +272,7 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
             >
               {firstName} {lastName}
             </Typography>
-            <Typography color={medium}>{friends.length} friends</Typography>
+            <Typography color={medium}>{friends && Array.isArray(friends) ? friends.length : 0} friends</Typography>
           </Box>
         </FlexBetween>
         {isOwnProfile && (
