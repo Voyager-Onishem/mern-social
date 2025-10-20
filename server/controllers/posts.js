@@ -146,11 +146,26 @@ export const createPost = async (req, res) => {
       comments: [],
     });
     await newPost.save();
-    const posts = await Post.find();
-    const serialized = posts.map(p => serializePost(p));
+    // Only return the newly created post
+    const serializedNewPost = serializePost(newPost);
     // Broadcast only the single new post to avoid large payloads
-    realtimeBus.emit('broadcast', { type: 'post:new', post: serializePost(newPost) });
-    return res.status(201).json(serialized);
+    realtimeBus.emit('broadcast', { type: 'post:new', post: serializedNewPost });
+    
+    // Get the first page of posts with pagination for response
+    const limit = 10;
+    const posts = await Post.find().sort({ createdAt: -1 }).limit(limit);
+    const total = await Post.countDocuments();
+    
+    return res.status(201).json({
+      posts: posts.map(p => serializePost(p)),
+      pagination: {
+        total,
+        page: 1,
+        limit,
+        pages: Math.ceil(total / limit),
+        hasMore: posts.length < total
+      }
+    });
   } catch (err) {
   console.error('createPost error:', err);
   res.status(500).json({ message: err.message || 'Failed to create post' });
@@ -160,8 +175,30 @@ export const createPost = async (req, res) => {
 /* READ */
 export const getFeedPosts = async (req, res) => {
   try {
-    const post = await Post.find();
-    res.status(200).json(post.map(p => serializePost(p)));
+    // Extract pagination parameters from query string
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Get posts with pagination
+    const posts = await Post.find()
+      .sort({ createdAt: -1 }) // Sort by most recent first
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // Get total count for pagination metadata
+    const total = await Post.countDocuments();
+    
+    // Return posts and pagination metadata
+    res.status(200).json({
+      posts: posts.map(p => serializePost(p)),
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit)),
+        hasMore: skip + posts.length < total
+      }
+    });
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
@@ -170,9 +207,30 @@ export const getFeedPosts = async (req, res) => {
 export const getUserPosts = async (req, res) => {
   try {
     const { userId } = req.params;
-    const posts = await Post.find({ userId });
-    // Reuse serializePost to ensure likes Map converted & mediaPaths normalized
-    res.status(200).json(posts.map(p => serializePost(p)));
+    // Extract pagination parameters from query string
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Get user posts with pagination
+    const posts = await Post.find({ userId })
+      .sort({ createdAt: -1 }) // Sort by most recent first
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // Get total count for pagination metadata
+    const total = await Post.countDocuments({ userId });
+    
+    // Return posts and pagination metadata
+    res.status(200).json({
+      posts: posts.map(p => serializePost(p)),
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit)),
+        hasMore: skip + posts.length < total
+      }
+    });
   } catch (err) {
     res.status(404).json({ message: err.message });
   }

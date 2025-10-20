@@ -1,7 +1,14 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setPosts, setPostsLoading, incrementPostImpression, markPostSeenThisSession } from "state";
-import { Box, Skeleton } from '@mui/material';
+import { 
+  setPosts, 
+  setPostsLoading, 
+  incrementPostImpression, 
+  markPostSeenThisSession,
+  appendPosts,
+  setPagination
+} from "state";
+import { Box, Skeleton, CircularProgress, Typography } from '@mui/material';
 import { useSearchParams } from "react-router-dom";
 import PostWidget from "./PostWidget";
 
@@ -12,63 +19,209 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   const posts = useSelector((state) => state.posts);
   const token = useSelector((state) => state.token);
   const loading = useSelector((state) => state.postsLoading);
+  const pagination = useSelector((state) => state.pagination);
   const [searchParams] = useSearchParams();
   const targetPostId = searchParams.get("post");
   const targetPostRef = useRef({});
+  const loaderRef = useRef(null);
+  
+  // Track if we're loading the initial page or additional pages
+  const [initialLoading, setInitialLoading] = useState(true);
+  
+  // Pull to refresh state
+  const [refreshing, setRefreshing] = useState(false);
+  const touchStartY = useRef(0);
+  const touchEndY = useRef(0);
+  const MIN_PULL_DISTANCE = 100;
 
-  const getPosts = async () => {
+  const getPosts = async (page = 1, append = false) => {
+    if (loading) return;
+    dispatch(setPostsLoading(true));
+    
     try {
-      const response = await fetch(`${API_URL}/posts`, {
+      const response = await fetch(`${API_URL}/posts?page=${page}&limit=${pagination.limit}`, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
+      
       const text = await response.text();
       let data;
-      try { data = JSON.parse(text); } catch { data = []; }
+      try { data = JSON.parse(text); } catch { data = { posts: [], pagination: { ...pagination, hasMore: false } }; }
+      
       if (!response.ok) {
         console.warn('Failed to load feed posts:', data);
-        dispatch(setPosts({ posts: Array.isArray(data) ? data : [] }));
+        if (append) {
+          dispatch(appendPosts({ posts: [], pagination: { ...pagination, hasMore: false } }));
+        } else {
+          dispatch(setPosts({ posts: [], pagination: { ...pagination, hasMore: false } }));
+        }
         return;
       }
-      dispatch(setPosts({ posts: Array.isArray(data) ? data : [] }));
+      
+      if (append) {
+        dispatch(appendPosts({ 
+          posts: Array.isArray(data.posts) ? data.posts : [], 
+          pagination: data.pagination 
+        }));
+      } else {
+        dispatch(setPosts({ 
+          posts: Array.isArray(data.posts) ? data.posts : [], 
+          pagination: data.pagination 
+        }));
+      }
     } catch (e) {
       console.warn('Error fetching feed posts:', e);
-      dispatch(setPosts({ posts: [] }));
+      if (append) {
+        dispatch(appendPosts({ posts: [], pagination: { ...pagination, hasMore: false } }));
+      } else {
+        dispatch(setPosts({ posts: [], pagination: { ...pagination, hasMore: false } }));
+      }
+    } finally {
+      dispatch(setPostsLoading(false));
+      setInitialLoading(false);
     }
   };
 
-  const getUserPosts = async () => {
+  const getUserPosts = async (page = 1, append = false) => {
+    if (loading) return;
+    dispatch(setPostsLoading(true));
+    
     try {
       const response = await fetch(
-        `${API_URL}/posts/${userId}/posts`,
+        `${API_URL}/posts/${userId}/posts?page=${page}&limit=${pagination.limit}`,
         {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      
       const text = await response.text();
       let data;
-      try { data = JSON.parse(text); } catch { data = []; }
+      try { data = JSON.parse(text); } catch { data = { posts: [], pagination: { ...pagination, hasMore: false } }; }
+      
       if (!response.ok) {
         console.warn('Failed to load user posts:', data);
-        dispatch(setPosts({ posts: Array.isArray(data) ? data : [] }));
+        if (append) {
+          dispatch(appendPosts({ posts: [], pagination: { ...pagination, hasMore: false } }));
+        } else {
+          dispatch(setPosts({ posts: [], pagination: { ...pagination, hasMore: false } }));
+        }
         return;
       }
-      dispatch(setPosts({ posts: Array.isArray(data) ? data : [] }));
+      
+      if (append) {
+        dispatch(appendPosts({ 
+          posts: Array.isArray(data.posts) ? data.posts : [], 
+          pagination: data.pagination 
+        }));
+      } else {
+        dispatch(setPosts({ 
+          posts: Array.isArray(data.posts) ? data.posts : [], 
+          pagination: data.pagination 
+        }));
+      }
     } catch (e) {
       console.warn('Error fetching user posts:', e);
-      dispatch(setPosts({ posts: [] }));
+      if (append) {
+        dispatch(appendPosts({ posts: [], pagination: { ...pagination, hasMore: false } }));
+      } else {
+        dispatch(setPosts({ posts: [], pagination: { ...pagination, hasMore: false } }));
+      }
+    } finally {
+      dispatch(setPostsLoading(false));
+      setInitialLoading(false);
     }
   };
 
+  // Load initial posts
   useEffect(() => {
+    setInitialLoading(true);
     dispatch(setPostsLoading(true));
+    
+    // Reset pagination when switching between profile and feed
+    dispatch(setPagination({
+      page: 1,
+      hasMore: true
+    }));
+    
     if (isProfile) {
-      getUserPosts();
+      getUserPosts(1, false);
     } else {
-      getPosts();
+      getPosts(1, false);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId, isProfile]); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // Handle infinite scrolling with Intersection Observer
+  useEffect(() => {
+    const options = {
+      root: null,
+      rootMargin: "20px",
+      threshold: 0.1
+    };
+    
+    const handleObserver = (entries) => {
+      const target = entries[0];
+      if (target.isIntersecting && pagination.hasMore && !loading && !initialLoading) {
+        // Load next page
+        const nextPage = pagination.page + 1;
+        if (isProfile) {
+          getUserPosts(nextPage, true);
+        } else {
+          getPosts(nextPage, true);
+        }
+      }
+    };
+    
+    const observer = new IntersectionObserver(handleObserver, options);
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current);
+    }
+    
+    return () => {
+      if (loaderRef.current) {
+        observer.unobserve(loaderRef.current);
+      }
+    };
+  }, [pagination.hasMore, pagination.page, loading, initialLoading, isProfile]);
+  
+  // Handle pull-to-refresh for mobile
+  const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndY.current = e.touches[0].clientY;
+    
+    // Calculate pull distance
+    const pullDistance = touchEndY.current - touchStartY.current;
+    
+    // Only show refresh indicator if pulled down from top of page
+    if (pullDistance > MIN_PULL_DISTANCE && window.scrollY === 0) {
+      setRefreshing(true);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    const pullDistance = touchEndY.current - touchStartY.current;
+    
+    // Trigger refresh if pulled down enough from top of page
+    if (pullDistance > MIN_PULL_DISTANCE && window.scrollY === 0) {
+      // Reset page to 1 and reload
+      dispatch(setPagination({
+        page: 1,
+        hasMore: true
+      }));
+      
+      if (isProfile) {
+        getUserPosts(1, false);
+      } else {
+        getPosts(1, false);
+      }
+    }
+    
+    // Reset refreshing state
+    setRefreshing(false);
+  };
   
   // Scroll to target post if specified in URL
   useEffect(() => {
@@ -198,8 +351,19 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   }, [posts, token, dispatch]);
 
   return (
-    <>
-      {loading && posts.length === 0 && (
+    <Box 
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {refreshing && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+          <CircularProgress size={24} />
+        </Box>
+      )}
+      
+      {initialLoading && posts.length === 0 && (
         <Box>
           {Array.from({ length: 3 }).map((_, i) => (
             <Box key={i} sx={{ mb: 3 }}>
@@ -210,6 +374,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
           ))}
         </Box>
       )}
+      
       {posts.map(
         ({
           _id,
@@ -225,6 +390,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
           comments,
           createdAt,
           impressions,
+          mediaPaths
         }) => (
           <PostWidget
             key={_id}
@@ -235,6 +401,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
             location={location}
             picturePath={picturePath}
             audioPath={audioPath}
+            mediaPaths={mediaPaths}
             userPicturePath={userPicturePath}
             likes={likes}
             comments={comments}
@@ -246,7 +413,37 @@ const PostsWidget = ({ userId, isProfile = false }) => {
           />
         )
       )}
-    </>
+      
+      {/* Loading indicator for more posts */}
+      {loading && !initialLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+          <CircularProgress size={30} />
+        </Box>
+      )}
+      
+      {/* Invisible element for intersection observer */}
+      {pagination.hasMore && (
+        <Box ref={loaderRef} height="20px" width="100%" />
+      )}
+      
+      {/* End of feed message */}
+      {!pagination.hasMore && posts.length > 0 && !loading && (
+        <Box sx={{ textAlign: 'center', my: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            You've reached the end of the feed
+          </Typography>
+        </Box>
+      )}
+      
+      {/* No posts message */}
+      {!loading && posts.length === 0 && (
+        <Box sx={{ textAlign: 'center', my: 2 }}>
+          <Typography variant="body1">
+            No posts to display
+          </Typography>
+        </Box>
+      )}
+    </Box>
   );
 };
 

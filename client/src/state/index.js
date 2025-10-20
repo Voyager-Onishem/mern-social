@@ -7,6 +7,13 @@ const initialState = {
   posts: [],
   postsLoading: false,
   sessionSeenPostIds: {}, // Feature 26: track which post IDs have been counted locally this session
+  pagination: {
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 0,
+    hasMore: false
+  },
 };
 
 export const authSlice = createSlice({
@@ -34,9 +41,33 @@ export const authSlice = createSlice({
     setPosts: (state, action) => {
       state.posts = action.payload.posts;
       state.postsLoading = false;
+      // If pagination information is provided, update it
+      if (action.payload.pagination) {
+        state.pagination = action.payload.pagination;
+      }
     },
     setPostsLoading: (state, action) => {
       state.postsLoading = !!action.payload;
+    },
+    appendPosts: (state, action) => {
+      // Append new posts to the existing array
+      const newPosts = action.payload.posts || [];
+      // Filter out duplicates based on _id
+      const uniqueNewPosts = newPosts.filter(newPost => 
+        !state.posts.some(existingPost => existingPost._id === newPost._id)
+      );
+      state.posts = [...state.posts, ...uniqueNewPosts];
+      state.postsLoading = false;
+      // Update pagination information
+      if (action.payload.pagination) {
+        state.pagination = action.payload.pagination;
+      }
+    },
+    setPagination: (state, action) => {
+      state.pagination = {
+        ...state.pagination,
+        ...action.payload
+      };
     },
     setPost: (state, action) => {
       const updatedPosts = state.posts.map((post) => {
@@ -73,7 +104,19 @@ export const authSlice = createSlice({
   },
 });
 
-export const { setMode, setLogin, setLogout, setFriends, setPosts, setPost, addPost, incrementPostImpression, markPostSeenThisSession, setUserProfileViewsTotal } =
-  authSlice.actions;
+export const { 
+  setMode, 
+  setLogin, 
+  setLogout, 
+  setFriends, 
+  setPosts, 
+  setPost, 
+  addPost, 
+  incrementPostImpression, 
+  markPostSeenThisSession, 
+  setUserProfileViewsTotal,
+  appendPosts,
+  setPagination
+} = authSlice.actions;
 export const { setPostsLoading } = authSlice.actions;
 export default authSlice.reducer;

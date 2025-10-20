@@ -11,7 +11,7 @@ import Comment from "components/Comment";
 import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
-import React, { useState, useRef, forwardRef } from "react";
+import React, { useState, useRef, forwardRef, useEffect } from "react";
 import { extractFirstGiphyUrl, isGiphyUrl, extractGiphyUrls } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
 import { timeAgo } from "utils/timeAgo";
@@ -48,6 +48,9 @@ const PostWidget = forwardRef(({
   const [giphyOpen, setGiphyOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
+  // Lazy loading state
+  const [mediaLoaded, setMediaLoaded] = useState(false);
+  const mediaRef = useRef(null);
   const [errorSnack, setErrorSnack] = useState({ open: false, message: "" });
   // Lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -77,6 +80,39 @@ const PostWidget = forwardRef(({
   const inputBg = palette.mode === 'dark' ? palette.background.alt : '#fff';
   const inputBorder = palette.mode === 'dark' ? palette.neutral.light : palette.neutral.medium;
   const inputFocus = palette.primary.main;
+
+  // Setup intersection observer for lazy loading media
+  useEffect(() => {
+    // Skip if no media to load
+    if ((!Array.isArray(mediaPaths) || mediaPaths.length === 0) && !picturePath) {
+      return;
+    }
+    
+    const options = {
+      root: null,
+      rootMargin: '100px', // Load before scrolling into view (100px threshold)
+      threshold: 0.1 // Trigger when 10% of element is visible
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setMediaLoaded(true);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, options);
+    
+    if (mediaRef.current) {
+      observer.observe(mediaRef.current);
+    }
+    
+    return () => {
+      if (mediaRef.current) {
+        observer.unobserve(mediaRef.current);
+      }
+    };
+  }, [picturePath, mediaPaths]);
 
   // Fetch latest comments for this post
   const fetchComments = async () => {
@@ -319,37 +355,52 @@ const PostWidget = forwardRef(({
         );
       })()}
       {/* Render mediaPaths if any; else fall back to legacy picturePath */}
-      {Array.isArray(mediaPaths) && mediaPaths.length > 0 ? (
-        <Box mt={1} display="flex" flexDirection="column" gap={1}>
-          {mediaPaths.map((mp, idx) => {
-            if (!mp) return null;
-            const lower = String(mp).toLowerCase();
-            const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
-            const src = `${API_URL}/assets/${mp}`;
-            return isVideo ? (
-              <Box key={idx} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }} sx={{ cursor: 'pointer' }}>
-                <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
-              </Box>
-            ) : (
-              <Box key={idx} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }} sx={{ cursor: 'pointer' }}>
-                <img width="100%" height="auto" alt={`media-${idx}`} style={{ borderRadius: "0.75rem" }} src={src} />
-              </Box>
-            );
-          })}
-        </Box>
-      ) : picturePath ? (
-        (() => {
-          const lower = String(picturePath).toLowerCase();
-          const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
-          const src = `${API_URL}/assets/${picturePath}`;
-          return isVideo ? (
-            <Box mt={1} sx={{ cursor: 'pointer' }} onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
-              <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
-            </Box>
+      {(Array.isArray(mediaPaths) && mediaPaths.length > 0) || picturePath ? (
+        <Box ref={mediaRef} sx={{ position: 'relative', minHeight: '150px', mt: 1 }}>
+          {!mediaLoaded ? (
+            // Show skeleton while media is loading
+            <Skeleton 
+              variant="rectangular" 
+              height={280} 
+              animation="wave" 
+              sx={{ borderRadius: "0.75rem" }}
+            />
           ) : (
-            <img width="100%" height="auto" alt="post" style={{ borderRadius: "0.75rem", marginTop: "0.75rem", cursor: 'pointer' }} src={src} onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }} />
-          );
-        })()
+            // Once in viewport and loaded, show the actual media
+            Array.isArray(mediaPaths) && mediaPaths.length > 0 ? (
+              <Box display="flex" flexDirection="column" gap={1}>
+                {mediaPaths.map((mp, idx) => {
+                  if (!mp) return null;
+                  const lower = String(mp).toLowerCase();
+                  const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
+                  const src = `${API_URL}/assets/${mp}`;
+                  return isVideo ? (
+                    <Box key={idx} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }} sx={{ cursor: 'pointer' }}>
+                      <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
+                    </Box>
+                  ) : (
+                    <Box key={idx} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }} sx={{ cursor: 'pointer' }}>
+                      <img width="100%" height="auto" loading="lazy" alt={`media-${idx}`} style={{ borderRadius: "0.75rem" }} src={src} />
+                    </Box>
+                  );
+                })}
+              </Box>
+            ) : picturePath ? (
+              (() => {
+                const lower = String(picturePath).toLowerCase();
+                const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
+                const src = `${API_URL}/assets/${picturePath}`;
+                return isVideo ? (
+                  <Box mt={1} sx={{ cursor: 'pointer' }} onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
+                    <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
+                  </Box>
+                ) : (
+                  <img width="100%" height="auto" loading="lazy" alt="post" style={{ borderRadius: "0.75rem", marginTop: "0.75rem", cursor: 'pointer' }} src={src} onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }} />
+                );
+              })()
+            ) : null
+          )}
+        </Box>
       ) : null}
       {!picturePath && (!mediaPaths || mediaPaths.length === 0) && audioPath && (
         <Box mt={1}>
