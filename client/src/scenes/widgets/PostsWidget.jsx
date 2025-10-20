@@ -8,10 +8,11 @@ import {
   appendPosts,
   setPagination
 } from "state";
-import { Box, Skeleton, CircularProgress, Typography } from '@mui/material';
+import { Box, CircularProgress, Skeleton, Typography } from '@mui/material';
 import { useSearchParams } from "react-router-dom";
 import PostWidget from "./PostWidget";
 import AnimatedPostEntry from "components/AnimatedPostEntry";
+import LoadingSpinner from "components/LoadingSpinner";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -40,12 +41,42 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   const scrollPositionKey = `scrollPosition_${isProfile ? userId : 'feed'}`;
   const previousScrollPosition = useRef(parseInt(sessionStorage.getItem(scrollPositionKey) || '0'));
 
+  // Track last fetch time to prevent overfetching
+  const lastFetchRef = useRef(0);
+  const FETCH_COOLDOWN = 300; // milliseconds between fetches
+  
+  // Scroll tracking refs for enhanced infinite scrolling
+  const scrollPositions = useRef([]);
+  const scrollTimer = useRef(null);
+  const isScrollingFast = useRef(false);
+  const scrollDirection = useRef("down"); // "up" or "down"
+  const lastPosition = useRef(0);
+  const scrollPauseTimer = useRef(null);
+  const observerInstance = useRef(null);
+  
   const getPosts = async (page = 1, append = false) => {
     if (loading) return;
+    
+    // Throttle fetches to prevent overwhelming the server
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchRef.current;
+    
+    if (timeSinceLastFetch < FETCH_COOLDOWN && append) {
+      // If fetching too soon, delay the request slightly
+      await new Promise(resolve => setTimeout(resolve, FETCH_COOLDOWN - timeSinceLastFetch));
+    }
+    
+    // Update last fetch time
+    lastFetchRef.current = Date.now();
+    
+    // Set loading state
     dispatch(setPostsLoading(true));
     
     try {
-      const response = await fetch(`${API_URL}/posts?page=${page}&limit=${pagination.limit}`, {
+      // Add a small random offset to limit for more natural loading
+      const adjustedLimit = pagination.limit + (append ? Math.floor(Math.random() * 3) : 0);
+      
+      const response = await fetch(`${API_URL}/posts?page=${page}&limit=${adjustedLimit}`, {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -64,7 +95,11 @@ const PostsWidget = ({ userId, isProfile = false }) => {
         return;
       }
       
+      // Introduce a small delay to ensure smooth transitions for appends
       if (append) {
+        // Small delay for smoother appearance
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         dispatch(appendPosts({ 
           posts: Array.isArray(data.posts) ? data.posts : [], 
           pagination: data.pagination 
@@ -90,11 +125,27 @@ const PostsWidget = ({ userId, isProfile = false }) => {
 
   const getUserPosts = async (page = 1, append = false) => {
     if (loading) return;
+    
+    // Throttle fetches to prevent overwhelming the server
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchRef.current;
+    
+    if (timeSinceLastFetch < FETCH_COOLDOWN && append) {
+      // If fetching too soon, delay the request slightly
+      await new Promise(resolve => setTimeout(resolve, FETCH_COOLDOWN - timeSinceLastFetch));
+    }
+    
+    // Update last fetch time
+    lastFetchRef.current = Date.now();
+    
     dispatch(setPostsLoading(true));
     
     try {
+      // Add a small random offset to limit for more natural loading
+      const adjustedLimit = pagination.limit + (append ? Math.floor(Math.random() * 3) : 0);
+      
       const response = await fetch(
-        `${API_URL}/posts/${userId}/posts?page=${page}&limit=${pagination.limit}`,
+        `${API_URL}/posts/${userId}/posts?page=${page}&limit=${adjustedLimit}`,
         {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
@@ -115,7 +166,11 @@ const PostsWidget = ({ userId, isProfile = false }) => {
         return;
       }
       
+      // Introduce a small delay to ensure smooth transitions for appends
       if (append) {
+        // Small delay for smoother appearance
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         dispatch(appendPosts({ 
           posts: Array.isArray(data.posts) ? data.posts : [], 
           pagination: data.pagination 
@@ -157,21 +212,29 @@ const PostsWidget = ({ userId, isProfile = false }) => {
     }
   }, [userId, isProfile]); // eslint-disable-line react-hooks/exhaustive-deps
   
-  // Handle infinite scrolling with Intersection Observer
+  // Enhanced infinite scrolling with Intersection Observer and adaptive preloading
   useEffect(() => {
+    // Initialize rootMargin with a default value
+    // We'll adjust this dynamically based on scroll behavior
+    let rootMargin = "800px";
+    
     const options = {
       root: null,
-      // Increase rootMargin to load more aggressively before user reaches the end
-      // This makes the experience more seamless as new posts are loaded before user reaches the bottom
-      rootMargin: "500px", // Load when within 500px of the bottom
+      rootMargin,
       threshold: 0.1
     };
     
+    // Define the handler function outside of the IntersectionObserver constructor
     const handleObserver = (entries) => {
       const target = entries[0];
       if (target.isIntersecting && pagination.hasMore && !loading && !initialLoading) {
-        // Calculate how many pages to potentially preload based on scroll speed
         const nextPage = pagination.page + 1;
+        
+        // Adaptive loading: Consider scroll speed, direction, and position
+        const scrolledPercentage = (window.innerHeight + window.scrollY) / document.body.scrollHeight;
+        const shouldPrefetch = isScrollingFast.current || 
+          (scrollDirection.current === "down" && scrolledPercentage > 0.6);
+        
         if (isProfile) {
           getUserPosts(nextPage, true);
         } else {
@@ -180,14 +243,130 @@ const PostsWidget = ({ userId, isProfile = false }) => {
       }
     };
     
-    const observer = new IntersectionObserver(handleObserver, options);
-    if (loaderRef.current) {
-      observer.observe(loaderRef.current);
-    }
+    // Function to update the observer with new settings
+    const updateIntersectionObserver = (margin) => {
+      if (observerInstance.current) {
+        observerInstance.current.disconnect();
+      }
+      
+      observerInstance.current = new IntersectionObserver(handleObserver, {
+        root: null,
+        rootMargin: margin,
+        threshold: 0.1
+      });
+      
+      if (loaderRef.current) {
+        observerInstance.current.observe(loaderRef.current);
+      }
+    };
+    
+    // Track scroll metrics for adaptive loading
+    const trackScrollMetrics = () => {
+      const currentPosition = window.scrollY;
+      const timestamp = Date.now();
+      
+      // Determine scroll direction
+      if (currentPosition > lastPosition.current) {
+        scrollDirection.current = "down";
+      } else if (currentPosition < lastPosition.current) {
+        scrollDirection.current = "up";
+      }
+      
+      // Save current position for next comparison
+      lastPosition.current = currentPosition;
+      
+      // Save position with timestamp for speed calculation
+      scrollPositions.current.push({ position: currentPosition, time: timestamp });
+      
+      // Keep only the last 5 positions
+      if (scrollPositions.current.length > 5) {
+        scrollPositions.current.shift();
+      }
+      
+      // Calculate scroll speed if we have enough data points
+      if (scrollPositions.current.length >= 2) {
+        const oldestMeasurement = scrollPositions.current[0];
+        const newestMeasurement = scrollPositions.current[scrollPositions.current.length - 1];
+        
+        const pixelsMoved = newestMeasurement.position - oldestMeasurement.position;
+        const timeTaken = newestMeasurement.time - oldestMeasurement.time;
+        
+        // Speed in pixels per millisecond
+        const speed = Math.abs(pixelsMoved / timeTaken);
+        
+        // Dynamic speed thresholds based on device performance
+        const performanceNow = window.performance.now;
+        const fastScrollThreshold = performanceNow ? 0.4 : 0.3; // Lower threshold on slower devices
+        
+        // If scrolling faster than a threshold, prefetch more aggressively
+        isScrollingFast.current = speed > fastScrollThreshold;
+        
+        // Dynamically adjust rootMargin based on scroll speed and direction
+        if (observerInstance.current && loaderRef.current) {
+          let newMargin;
+          
+          if (isScrollingFast.current && scrollDirection.current === "down") {
+            // Much more aggressive prefetching when scrolling down quickly
+            newMargin = `${Math.min(1500, 800 + speed * 1000)}px`;
+          } else if (scrollDirection.current === "down") {
+            // Normal prefetching when scrolling down at normal speed
+            newMargin = "800px";
+          } else {
+            // Reduced prefetching when scrolling up
+            newMargin = "400px";
+          }
+          
+          // Only update observer if margin changed significantly
+          if (Math.abs(parseInt(newMargin) - parseInt(rootMargin)) > 200) {
+            rootMargin = newMargin;
+            updateIntersectionObserver(rootMargin);
+          }
+        }
+      }
+      
+      // Clear the old timer and set a new one to detect when scrolling stops
+      if (scrollTimer.current) {
+        clearTimeout(scrollTimer.current);
+      }
+      
+      scrollTimer.current = setTimeout(() => {
+        isScrollingFast.current = false;
+      }, 100);
+      
+      // Detect when user pauses scrolling and check if we should preload
+      if (scrollPauseTimer.current) {
+        clearTimeout(scrollPauseTimer.current);
+      }
+      
+      scrollPauseTimer.current = setTimeout(() => {
+        // If user has paused scrolling and we're close to the bottom, load more
+        const scrolledPercentage = (window.innerHeight + window.scrollY) / document.body.scrollHeight;
+        if (scrolledPercentage > 0.7 && pagination.hasMore && !loading && !initialLoading) {
+          const nextPage = pagination.page + 1;
+          if (isProfile) {
+            getUserPosts(nextPage, true);
+          } else {
+            getPosts(nextPage, true);
+          }
+        }
+      }, 400);
+    };
+    
+    window.addEventListener('scroll', trackScrollMetrics);
+    
+    // Initialize observer using our function
+    updateIntersectionObserver(rootMargin);
     
     return () => {
-      if (loaderRef.current) {
-        observer.unobserve(loaderRef.current);
+      if (observerInstance.current) {
+        observerInstance.current.disconnect();
+      }
+      window.removeEventListener('scroll', trackScrollMetrics);
+      if (scrollTimer.current) {
+        clearTimeout(scrollTimer.current);
+      }
+      if (scrollPauseTimer.current) {
+        clearTimeout(scrollPauseTimer.current);
       }
     };
   }, [pagination.hasMore, pagination.page, loading, initialLoading, isProfile]);
@@ -330,7 +509,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
         handleFlush();
       }, 800); // debounce window
     };
-    observerRef.current = new IntersectionObserver((entries) => {
+    const handleIntersection = (entries) => {
       entries.forEach(entry => {
         const el = entry.target;
         const id = el.getAttribute('data-post-id');
@@ -367,7 +546,10 @@ const PostsWidget = ({ userId, isProfile = false }) => {
             }
         }
       });
-    }, { threshold: [0, 0.5, 1] });
+    };
+    
+    observerRef.current = new IntersectionObserver(handleIntersection, 
+      { threshold: [0, 0.5, 1] });
 
     // Observe existing post elements
     posts.forEach(p => {
@@ -395,17 +577,55 @@ const PostsWidget = ({ userId, isProfile = false }) => {
       {/* Pull-to-refresh indicator */}
       {refreshing && (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-          <CircularProgress size={24} />
+          <LoadingSpinner 
+            size={30} 
+            message="Refreshing..." 
+            style="dots" 
+          />
         </Box>
       )}
       
       {initialLoading && posts.length === 0 && (
         <Box>
+          {/* Centered loading spinner during initial load */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+            <LoadingSpinner 
+              size={50} 
+              message="Loading posts..." 
+              style="ripple" 
+            />
+          </Box>
+          
+          {/* Skeleton placeholders for visual stability */}
           {Array.from({ length: 3 }).map((_, i) => (
-            <Box key={i} sx={{ mb: 3 }}>
-              <Skeleton variant="rectangular" height={24} width={160} sx={{ mb: 1, borderRadius: 1 }} />
+            <Box key={i} sx={{ 
+              mb: 3,
+              p: 2,
+              bgcolor: 'background.paper',
+              borderRadius: '0.75rem',
+              boxShadow: 3,
+              animation: `pulse 1.5s infinite ease-in-out ${i * 0.2}s`,
+              '@keyframes pulse': {
+                '0%': { opacity: 0.6 },
+                '50%': { opacity: 0.8 },
+                '100%': { opacity: 0.6 },
+              }
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Skeleton variant="circular" width={50} height={50} sx={{ mr: 2 }} />
+                <Box sx={{ width: '100%' }}>
+                  <Skeleton variant="text" width="40%" height={24} sx={{ mb: 0.5 }} />
+                  <Skeleton variant="text" width="25%" height={16} />
+                </Box>
+              </Box>
               <Skeleton variant="text" width="90%" />
-              <Skeleton variant="rectangular" height={250} sx={{ mt: 1, borderRadius: 2 }} />
+              <Skeleton variant="text" width="95%" />
+              <Skeleton variant="rectangular" height={250} sx={{ mt: 1.5, borderRadius: 2 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                <Skeleton variant="rounded" width={80} height={30} />
+                <Skeleton variant="rounded" width={80} height={30} />
+                <Skeleton variant="rounded" width={80} height={30} />
+              </Box>
             </Box>
           ))}
         </Box>
@@ -453,34 +673,18 @@ const PostsWidget = ({ userId, isProfile = false }) => {
       
       {/* Enhanced loading indicator for more posts */}
       {loading && !initialLoading && (
-        <Box sx={{ my: 2 }}>
-          {/* Use skeleton placeholders that look like posts being loaded */}
-          {Array.from({ length: 1 }).map((_, i) => (
-            <Box key={i} sx={{ 
-              mb: 3, 
-              p: 2, 
-              bgcolor: 'background.paper',
-              borderRadius: '0.75rem',
-              boxShadow: 3,
-              animation: 'pulse 1.5s infinite ease-in-out',
-              '@keyframes pulse': {
-                '0%': { opacity: 0.6 },
-                '50%': { opacity: 0.8 },
-                '100%': { opacity: 0.6 },
-              }
-            }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Skeleton variant="circular" width={50} height={50} sx={{ mr: 2 }} />
-                <Box sx={{ width: '100%' }}>
-                  <Skeleton variant="text" width="40%" height={24} sx={{ mb: 0.5 }} />
-                  <Skeleton variant="text" width="25%" height={16} />
-                </Box>
-              </Box>
-              <Skeleton variant="text" width="90%" />
-              <Skeleton variant="text" width="95%" />
-              <Skeleton variant="rectangular" height={200} sx={{ mt: 1.5, borderRadius: 1 }} />
-            </Box>
-          ))}
+        <Box sx={{ 
+          my: 2, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center'
+        }}>
+          {/* Custom animated loading spinner with default style */}
+          <LoadingSpinner 
+            size={40} 
+            message="Loading more posts..." 
+            style="default" 
+          />
         </Box>
       )}
       
@@ -491,18 +695,74 @@ const PostsWidget = ({ userId, isProfile = false }) => {
       
       {/* End of feed message */}
       {!pagination.hasMore && posts.length > 0 && !loading && (
-        <Box sx={{ textAlign: 'center', my: 2 }}>
-          <Typography variant="body2" color="text.secondary">
+        <Box sx={{ 
+          textAlign: 'center', 
+          my: 3,
+          p: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 1,
+          borderRadius: 2
+        }}>
+          <Box sx={{ 
+            width: 40, 
+            height: 3, 
+            bgcolor: 'divider',
+            borderRadius: 2,
+            mb: 1
+          }} />
+          <Typography 
+            variant="body1" 
+            color="text.secondary"
+            sx={{ 
+              fontWeight: 500,
+              fontSize: '0.95rem'
+            }}
+          >
             You've reached the end of the feed
+          </Typography>
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{ opacity: 0.7 }}
+          >
+            Check back later for more posts
           </Typography>
         </Box>
       )}
       
       {/* No posts message */}
-      {!loading && posts.length === 0 && (
-        <Box sx={{ textAlign: 'center', my: 2 }}>
-          <Typography variant="body1">
+      {!loading && posts.length === 0 && !initialLoading && (
+        <Box sx={{ 
+          textAlign: 'center', 
+          my: 4,
+          p: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+          bgcolor: 'background.paper',
+          borderRadius: '0.75rem',
+          boxShadow: 2
+        }}>
+          <Box sx={{
+            width: 60,
+            height: 60,
+            borderRadius: '50%',
+            bgcolor: 'background.default',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            {/* You could add an icon here for empty state */}
+            <Typography variant="h5" color="text.secondary">🤔</Typography>
+          </Box>
+          <Typography variant="h6">
             No posts to display
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {isProfile ? "This user hasn't posted anything yet." : "Your feed is empty. Follow more people to see their posts."}
           </Typography>
         </Box>
       )}
