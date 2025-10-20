@@ -99,25 +99,53 @@ const PostWidget = forwardRef(({
       threshold: 0.1 // Trigger when 10% of element is visible
     };
     
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          setMediaLoaded(true);
-          observer.unobserve(entry.target);
-        }
-      });
-    }, options);
+    let observerInstance = null;
     
-    if (mediaRef.current) {
-      observer.observe(mediaRef.current);
-    }
-    
-    return () => {
+    // Function to set up the observer
+    const setupObserver = () => {
+      // Clean up any existing observer first
+      if (observerInstance) {
+        observerInstance.disconnect();
+      }
+      
+      observerInstance = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            setMediaLoaded(true);
+            observerInstance.unobserve(entry.target);
+          }
+        });
+      }, options);
+      
       if (mediaRef.current) {
-        observer.unobserve(mediaRef.current);
+        observerInstance.observe(mediaRef.current);
       }
     };
-  }, [picturePath, mediaPaths]);
+    
+    // Set up the observer
+    setupObserver();
+    
+    // For newly created posts at the top of the feed, also load media immediately if they're already visible
+    const checkIfAlreadyVisible = () => {
+      if (mediaRef.current) {
+        const rect = mediaRef.current.getBoundingClientRect();
+        if (rect.top >= 0 && rect.bottom <= window.innerHeight) {
+          // Element is fully visible in the viewport
+          setMediaLoaded(true);
+        }
+      }
+    };
+    
+    // Check visibility after a short delay to ensure the DOM has updated
+    const timeoutId = setTimeout(checkIfAlreadyVisible, 50);
+    
+    return () => {
+      if (observerInstance && mediaRef.current) {
+        observerInstance.unobserve(mediaRef.current);
+      }
+      clearTimeout(timeoutId);
+    };
+  }, [picturePath, mediaPaths, postId]); // Added postId to ensure proper re-evaluation
 
   // Fetch latest comments for this post
   const fetchComments = async () => {

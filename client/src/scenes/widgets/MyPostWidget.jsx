@@ -8,7 +8,7 @@ import WidgetWrapper from "components/WidgetWrapper";
 import LocationPicker from "components/LocationPicker";
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setPosts } from "state";
+import { setPosts, addPost } from "state";
 import GiphyPicker from "components/GiphyPicker";
 import { extractFirstGiphyUrl, isGiphyUrl } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
@@ -113,8 +113,15 @@ const MyPostWidget = ({ picturePath }) => {
         setSubmitError(data?.message || data?.error || "Failed to create post.");
         return;
       }
-      const posts = Array.isArray(data) ? data : [];
-      dispatch(setPosts({ posts }));
+      
+      // Add the new post to the top of the feed instead of replacing all posts
+      if (data && data._id) {
+        // If a single post is returned, add it to the top
+        dispatch(addPost({ post: data }));
+      } else if (Array.isArray(data) && data.length > 0) {
+        // If an array is returned (for backward compatibility), add the first one
+        dispatch(addPost({ post: data[0] }));
+      }
       // Revoke generated object URLs for previews
       mediaFiles.forEach(f => {
         if (f.__previewUrl) {
