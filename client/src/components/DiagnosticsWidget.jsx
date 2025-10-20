@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import { Box, Typography, Paper, Button } from "@mui/material";
+import { Box, Typography, Paper, Button, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useSelector } from "react-redux";
+import SearchDiagnosticWidget from "./SearchDiagnosticWidget";
 
 const DiagnosticsWidget = () => {
   const [apiStatus, setApiStatus] = useState("Checking...");
@@ -17,12 +19,11 @@ const DiagnosticsWidget = () => {
 
   const checkApiConnection = async () => {
     try {
-      // Basic connection test
+      // Basic connection test without auth first
       const startTime = Date.now();
       const response = await fetch(`${API_URL}/auth/test`, {
         method: "GET",
         headers: { 
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json" 
         }
       });
@@ -30,8 +31,28 @@ const DiagnosticsWidget = () => {
       const responseTime = Date.now() - startTime;
       
       if (response.ok) {
-        setApiStatus(`Connected (${responseTime}ms)`);
-        setApiDetail("API server is reachable and responding.");
+        // Now test with authentication
+        try {
+          const authResponse = await fetch(`${API_URL}/auth/test-auth`, {
+            method: "GET",
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json" 
+            }
+          });
+          
+          if (authResponse.ok) {
+            setApiStatus(`Connected (${responseTime}ms)`);
+            setApiDetail("API server is reachable and responding. Authentication is working.");
+          } else {
+            setApiStatus(`Connected, but Auth Error: ${authResponse.status}`);
+            const authText = await authResponse.text();
+            setApiDetail(`Server is running, but authentication failed: ${authText || "No response body"}`);
+          }
+        } catch (authError) {
+          setApiStatus(`Connected, but Auth Error`);
+          setApiDetail(`Server is running, but authentication request failed: ${authError.message}`);
+        }
       } else {
         setApiStatus(`Error: ${response.status}`);
         const text = await response.text();
@@ -88,9 +109,23 @@ const DiagnosticsWidget = () => {
         color="warning" 
         size="small"
         onClick={checkApiConnection}
+        sx={{ mb: 2 }}
       >
         Recheck API Connection
       </Button>
+      
+      <Accordion>
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon />}
+          aria-controls="search-diagnostics-content"
+          id="search-diagnostics-header"
+        >
+          <Typography>Search Functionality Testing</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <SearchDiagnosticWidget />
+        </AccordionDetails>
+      </Accordion>
     </Paper>
   );
 };
