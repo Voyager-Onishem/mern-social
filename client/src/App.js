@@ -10,6 +10,7 @@ import { createTheme } from "@mui/material/styles";
 import { themeSettings } from "./theme";
 import RequireAuth from "components/RequireAuth";
 import ErrorBoundary from "components/ErrorBoundary";
+import TokenSynchronizer from "components/TokenSynchronizer";
 
 function App() {
   const mode = useSelector((state) => state.mode);
@@ -149,6 +150,7 @@ function App() {
       <BrowserRouter>
         <ThemeProvider theme={theme}>
           <CssBaseline />
+          <TokenSynchronizer />
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<LoginPage />} />

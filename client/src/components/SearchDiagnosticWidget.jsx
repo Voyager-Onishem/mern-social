@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Box, Typography, Paper, Button, TextField, CircularProgress, List, ListItem, ListItemText, Alert } from "@mui/material";
 import { searchApi } from "../api/searchApi";
 import { useSelector } from "react-redux";
+import { getCurrentToken } from "../utils/reduxUtils";
 
 const SearchDiagnosticWidget = () => {
   const [query, setQuery] = useState("");
@@ -12,8 +13,151 @@ const SearchDiagnosticWidget = () => {
   
   // Get token from Redux store to verify it's available
   const token = useSelector((state) => state.token);
+  const [tokenDebugInfo, setTokenDebugInfo] = useState("");
 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:6001";
+  
+  // Function to check token from multiple sources
+  const debugTokenSources = () => {
+    let debugInfo = "";
+    
+    // Check Redux token via useSelector
+    debugInfo += `Redux token (via useSelector): ${token ? "Present" : "Missing"}\n`;
+    if (token) debugInfo += `Token length: ${token.length}\n`;
+    
+    // Check localStorage token
+    const localStorageToken = localStorage.getItem("token");
+    debugInfo += `localStorage token: ${localStorageToken ? "Present" : "Missing"}\n`;
+    if (localStorageToken) debugInfo += `Token length: ${localStorageToken.length}\n`;
+    
+    // Check Redux via getCurrentToken utility
+    try {
+      const storeToken = getCurrentToken();
+      debugInfo += `Redux token (via getCurrentToken): ${storeToken ? "Present" : "Missing"}\n`;
+      if (storeToken) debugInfo += `Token length: ${storeToken.length}\n`;
+    } catch (e) {
+      debugInfo += `Error getting token via getCurrentToken: ${e.message}\n`;
+    }
+    
+    // Check window.__APP_STORE__
+    if (window.__APP_STORE__) {
+      debugInfo += "window.__APP_STORE__: Present\n";
+      try {
+        const state = window.__APP_STORE__.getState();
+        debugInfo += `Store state has token: ${state.token ? "Yes" : "No"}\n`;
+      } catch (e) {
+        debugInfo += `Error reading from store: ${e.message}\n`;
+      }
+    } else {
+      debugInfo += "window.__APP_STORE__: Missing\n";
+    }
+    
+    // Try a direct fetch to the API without using searchApi
+    debugInfo += "\nTesting direct API access...\n";
+    
+    // First test the public endpoint
+    fetch(`${API_URL}/auth/test`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        debugInfo += "Public API test (/auth/test): Success\n";
+        return response.json();
+      } else {
+        debugInfo += `Public API test (/auth/test): Failed (${response.status})\n`;
+        return response.text().then(text => ({ error: text }));
+      }
+    })
+    .then(data => {
+      debugInfo += `Public API response: ${JSON.stringify(data)}\n\n`;
+      
+      // Now test the authenticated endpoint
+      debugInfo += "Testing authenticated endpoint...\n";
+      return fetch(`${API_URL}/auth/test-auth`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token || localStorageToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+    })
+    .then(response => {
+      if (response.ok) {
+        debugInfo += "Direct API test: Success\n";
+        return response.json();
+      } else {
+        debugInfo += `Direct API test: Failed (${response.status})\n`;
+        return response.text().then(text => ({ error: text }));
+      }
+    })
+    .then(data => {
+      debugInfo += `API response: ${JSON.stringify(data)}\n`;
+      setTokenDebugInfo(debugInfo);
+    })
+    .catch(err => {
+      debugInfo += `Direct API test error: ${err.message}\n`;
+      setTokenDebugInfo(debugInfo);
+    });
+    
+    setTokenDebugInfo(debugInfo + "Waiting for API response...");
+  };
+  
+  // Function to directly test the search endpoint
+  const testDirectSearchEndpoint = async () => {
+    if (!query.trim() || query.trim().length < 2) {
+      setError("Search query must be at least 2 characters");
+      return;
+    }
+
+    setLoading(true);
+    setResults(null);
+    setError(null);
+    setApiDetail("Making direct API request to search endpoint...");
+    
+    const localStorageToken = localStorage.getItem("token");
+    const activeToken = token || localStorageToken;
+    
+    if (!activeToken) {
+      setError("No authentication token available");
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_URL}/search?query=${encodeURIComponent(query.trim())}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${activeToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setResults(data);
+        setApiDetail("Direct search request successful");
+      } else {
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || `Error ${response.status}`;
+        } catch (e) {
+          const text = await response.text();
+          errorMessage = `Error ${response.status}: ${text}`;
+        }
+        setError(errorMessage);
+        setApiDetail(`Direct search request failed: ${response.status}`);
+      }
+    } catch (err) {
+      setError(err.message);
+      setApiDetail(`Direct search request error: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const testSearch = async () => {
     if (!query.trim() || query.trim().length < 2) {
@@ -88,9 +232,37 @@ const SearchDiagnosticWidget = () => {
           color="primary" 
           onClick={testSearch}
           disabled={loading}
+          sx={{ mr: 1 }}
         >
           {loading ? <CircularProgress size={24} /> : "Test Search"}
         </Button>
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={testDirectSearchEndpoint}
+          disabled={loading}
+        >
+          Direct API
+        </Button>
+      </Box>
+      
+      <Box sx={{ mb: 2 }}>
+        <Button 
+          variant="outlined" 
+          color="info" 
+          size="small" 
+          onClick={debugTokenSources}
+          sx={{ mb: 1 }}
+        >
+          Debug Authentication
+        </Button>
+        {tokenDebugInfo && (
+          <Paper sx={{ p: 1, bgcolor: "#f0f8ff", whiteSpace: "pre-wrap" }}>
+            <Typography variant="body2" fontFamily="monospace">
+              {tokenDebugInfo}
+            </Typography>
+          </Paper>
+        )}
       </Box>
 
       {/* Token status display */}

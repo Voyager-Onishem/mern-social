@@ -97,6 +97,11 @@ app.post(
 );
 
 /* ROUTES */
+// Root endpoint for API connection test
+app.get("/", (req, res) => {
+  res.status(200).json({ status: "ok", message: "API server is running" });
+});
+
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/posts", postRoutes);
