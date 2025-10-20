@@ -2,7 +2,7 @@
 import { Box, Button, useMediaQuery } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Navbar from "scenes/navbar";
 import FriendListWidget from "scenes/widgets/FriendListWidget";
 import MyPostWidget from "scenes/widgets/MyPostWidget";
@@ -18,6 +18,8 @@ const ProfilePage = () => {
   const loggedInUser = useSelector((state) => state.user);
   const navigate = useNavigate();
   const isNonMobileScreens = useMediaQuery("(min-width:1000px)");
+  const [searchParams] = useSearchParams();
+  const targetPostId = searchParams.get("post");
 
   const getUser = async () => {
     const response = await fetch(`${API_URL}/users/${userId}`, {

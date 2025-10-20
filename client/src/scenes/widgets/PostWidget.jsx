@@ -11,7 +11,7 @@ import Comment from "components/Comment";
 import FlexBetween from "components/FlexBetween";
 import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
-import { useState, useRef } from "react";
+import { useState, useRef, forwardRef } from "react";
 import { extractFirstGiphyUrl, isGiphyUrl, extractGiphyUrls } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
 import { timeAgo } from "utils/timeAgo";
@@ -25,7 +25,7 @@ import { sharePost, statusToMessage } from "utils/share";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-const PostWidget = ({
+const PostWidget = forwardRef(({
   postId,
   postUserId,
   name,
@@ -39,7 +39,7 @@ const PostWidget = ({
   comments,
   createdAt,
   impressions, // Feature 26 Phase 1 (may be undefined for legacy posts)
-}) => {
+}, ref) => {
   const [isComments, setIsComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [commentGifUrls, setCommentGifUrls] = useState([]); // store selected / pasted GIFs separately so URLs are hidden
@@ -559,6 +559,6 @@ const PostWidget = ({
       />
     </WidgetWrapper>
   );
-};
+});
 
 export default PostWidget;

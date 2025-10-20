@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setPosts, setPostsLoading, incrementPostImpression, markPostSeenThisSession } from "state";
 import { Box, Skeleton } from '@mui/material';
+import { useSearchParams } from "react-router-dom";
 import PostWidget from "./PostWidget";
 
 const API_URL = process.env.REACT_APP_API_URL;
@@ -11,6 +12,9 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   const posts = useSelector((state) => state.posts);
   const token = useSelector((state) => state.token);
   const loading = useSelector((state) => state.postsLoading);
+  const [searchParams] = useSearchParams();
+  const targetPostId = searchParams.get("post");
+  const targetPostRef = useRef({});
 
   const getPosts = async () => {
     try {
@@ -65,6 +69,24 @@ const PostsWidget = ({ userId, isProfile = false }) => {
       getPosts();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // Scroll to target post if specified in URL
+  useEffect(() => {
+    if (targetPostId && posts.length > 0) {
+      const post = posts.find(p => p._id === targetPostId);
+      if (post) {
+        // Use a small delay to ensure the post is rendered
+        setTimeout(() => {
+          const element = targetPostRef.current;
+          if (element && element.scrollIntoView) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Add highlight effect
+            element.style.animation = 'highlight-post 2s';
+          }
+        }, 500);
+      }
+    }
+  }, [posts, targetPostId]);
 
   // Feature 26 Phase 1: batch impressions when posts enter viewport (>=50% visible for ~300ms)
   const observerRef = useRef(null);
@@ -210,6 +232,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
             comments={comments}
             createdAt={createdAt}
             impressions={impressions}
+            ref={targetPostId === _id ? targetPostRef.current : null}
           />
         )
       )}

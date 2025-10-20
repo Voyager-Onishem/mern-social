@@ -17,10 +17,10 @@ const SearchResultsWidget = ({ searchResults, isLoading, error, onClose }) => {
     if (onClose) onClose();
   };
 
-  const handlePostClick = (postId) => {
-    // Navigate to a post view - you may need to create this route
-    // For now, we'll just go to the home page
-    navigate(`/home?post=${postId}`);
+  const handlePostClick = (postId, userId) => {
+    // First navigate to the user's profile page who created the post
+    // Then add a query parameter to scroll to the specific post
+    navigate(`/profile/${userId}?post=${postId}`);
     if (onClose) onClose();
   };
 
@@ -133,7 +133,7 @@ const SearchResultsWidget = ({ searchResults, isLoading, error, onClose }) => {
                 <ListItem 
                   key={post._id} 
                   alignItems="flex-start" 
-                  onClick={() => handlePostClick(post._id)}
+                  onClick={() => handlePostClick(post._id, post.userId)}
                   sx={{ 
                     cursor: 'pointer',
                     '&:hover': { backgroundColor: neutralLight }
