@@ -156,9 +156,10 @@ app.use((err, req, res, next) => {
 /* MONGOOSE SETUP */
 const PORT = process.env.PORT || 6001;
 async function startServer() {
+  let mem;
   try {
     let mongoUrl = process.env.MONGO_URL;
-    let mem;
+    
     if (!mongoUrl || process.env.NODE_ENV === 'test') {
       console.warn("Using in-memory MongoDB (" + (process.env.NODE_ENV || 'dev') + ")...");
       mem = await MongoMemoryServer.create();
@@ -168,10 +169,49 @@ async function startServer() {
         process.exit(0);
       });
     }
-    await mongoose.connect(mongoUrl, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    
+    // Try to connect to MongoDB Atlas
+    try {
+      console.log("Connecting to MongoDB Atlas...");
+      await mongoose.connect(mongoUrl, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000, // 5 seconds timeout for server selection
+      });
+      console.log("Successfully connected to MongoDB Atlas!");
+    } catch (atlasError) {
+      // If connection to Atlas fails, fallback to local MongoDB
+      console.error("MongoDB Atlas connection failed:", atlasError.message);
+      console.log("Attempting to connect to local MongoDB...");
+      
+      try {
+        // Try to connect to local MongoDB
+        const localMongoUrl = "mongodb://localhost:27017/mern-social";
+        await mongoose.connect(localMongoUrl, {
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+          serverSelectionTimeoutMS: 5000,
+        });
+        console.log("Successfully connected to local MongoDB!");
+      } catch (localError) {
+        // If local MongoDB also fails, fallback to in-memory MongoDB
+        console.error("Local MongoDB connection failed:", localError.message);
+        console.log("Falling back to in-memory MongoDB...");
+        
+        mem = await MongoMemoryServer.create();
+        await mongoose.connect(mem.getUri(), {
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+        });
+        console.log("Successfully connected to in-memory MongoDB!");
+        
+        process.on("SIGINT", async () => {
+          try { if (mem) await mem.stop(); } catch {}
+          process.exit(0);
+        });
+      }
+    }
+    
     if (process.env.NODE_ENV !== 'test') {
       app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
     }

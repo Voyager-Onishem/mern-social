@@ -14,19 +14,64 @@ export const getUser = async (req, res) => {
 export const getUserFriends = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`Getting friends for user ${id}`);
+    
+    // Check if the ID is valid
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
+    
     const user = await User.findById(id);
-
+    
+    // Check if user exists
+    if (!user) {
+      console.log(`User ${id} not found`);
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    console.log(`Found user ${user.firstName} ${user.lastName}, friends count: ${user.friends?.length || 0}`);
+    
+    // Check if friends array exists
+    if (!user.friends || !Array.isArray(user.friends)) {
+      console.log(`User ${id} has no friends array`);
+      return res.status(200).json([]);
+    }
+    
+    // Filter out any invalid IDs to prevent errors
+    const validFriendIds = user.friends.filter(friendId => 
+      friendId && typeof friendId === 'string' && friendId.match(/^[0-9a-fA-F]{24}$/));
+    
+    console.log(`Valid friend IDs: ${validFriendIds.length}`);
+    
+    // If no valid friend IDs, return empty array
+    if (validFriendIds.length === 0) {
+      return res.status(200).json([]);
+    }
+    
     const friends = await Promise.all(
-      user.friends.map((id) => User.findById(id))
+      validFriendIds.map(async (friendId) => {
+        try {
+          return await User.findById(friendId);
+        } catch (err) {
+          console.error(`Error finding friend with ID ${friendId}:`, err.message);
+          return null;
+        }
+      })
     );
-    const formattedFriends = friends.map(
+    
+    // Filter out any nulls from failed lookups
+    const validFriends = friends.filter(friend => friend !== null);
+    console.log(`Found ${validFriends.length} valid friends out of ${validFriendIds.length} IDs`);
+    
+    const formattedFriends = validFriends.map(
       ({ _id, firstName, lastName, occupation, location, picturePath }) => {
         return { _id, firstName, lastName, occupation, location, picturePath };
       }
     );
     res.status(200).json(formattedFriends);
   } catch (err) {
-    res.status(404).json({ message: err.message });
+    console.error(`Error in getUserFriends:`, err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -34,31 +79,80 @@ export const getUserFriends = async (req, res) => {
 export const addRemoveFriend = async (req, res) => {
   try {
     const { id, friendId } = req.params;
+    console.log(`Add/remove friend operation: user ${id}, friend ${friendId}`);
+    
+    // Validate IDs
+    if (!id.match(/^[0-9a-fA-F]{24}$/) || !friendId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+    
+    // Prevent adding yourself as friend
+    if (id === friendId) {
+      return res.status(400).json({ message: "Cannot add yourself as friend" });
+    }
+
     const user = await User.findById(id);
     const friend = await User.findById(friendId);
-
-    if (user.friends.includes(friendId)) {
-      user.friends = user.friends.filter((id) => id !== friendId);
-      friend.friends = friend.friends.filter((id) => id !== id);
+    
+    // Check if both users exist
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (!friend) {
+      return res.status(404).json({ message: "Friend not found" });
+    }
+    
+    // Ensure friends arrays exist
+    if (!user.friends) user.friends = [];
+    if (!friend.friends) friend.friends = [];
+    
+    // Convert all IDs to strings for consistent comparison
+    const userFriends = user.friends.map(fid => fid.toString());
+    
+    // Check if already friends
+    if (userFriends.includes(friendId)) {
+      console.log(`Removing friend ${friendId} from user ${id}`);
+      // Remove friend
+      user.friends = user.friends.filter(fid => fid.toString() !== friendId);
+      friend.friends = friend.friends.filter(fid => fid.toString() !== id);
     } else {
+      console.log(`Adding friend ${friendId} to user ${id}`);
+      // Add friend
       user.friends.push(friendId);
       friend.friends.push(id);
     }
+    
     await user.save();
     await friend.save();
-
+    
+    // Get updated friends list
+    const friendIds = user.friends.filter(fid => 
+      fid && typeof fid === 'string' && fid.match(/^[0-9a-fA-F]{24}$/));
+    
     const friends = await Promise.all(
-      user.friends.map((id) => User.findById(id))
+      friendIds.map(async (friendId) => {
+        try {
+          return await User.findById(friendId);
+        } catch (err) {
+          console.error(`Error finding friend with ID ${friendId}:`, err.message);
+          return null;
+        }
+      })
     );
-    const formattedFriends = friends.map(
+    
+    // Filter out nulls and format
+    const validFriends = friends.filter(f => f !== null);
+    const formattedFriends = validFriends.map(
       ({ _id, firstName, lastName, occupation, location, picturePath }) => {
         return { _id, firstName, lastName, occupation, location, picturePath };
       }
     );
 
+    console.log(`Returning ${formattedFriends.length} friends after add/remove operation`);
     res.status(200).json(formattedFriends);
   } catch (err) {
-    res.status(404).json({ message: err.message });
+    console.error(`Error in addRemoveFriend:`, err);
+    res.status(500).json({ message: err.message });
   }
 };
 

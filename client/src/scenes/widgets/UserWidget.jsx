@@ -13,10 +13,12 @@ import { setLogin, setUserProfileViewsTotal } from "state";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:6001";
 
 const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const [draftLocation, setDraftLocation] = useState("");
   const [draftOccupation, setDraftOccupation] = useState("");
@@ -29,6 +31,7 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
   const [saving, setSaving] = useState(false);
   const [snack, setSnack] = useState({ open: false, msg: '', severity: 'info' });
   const [impressionsTotal, setImpressionsTotal] = useState(null);
+  const [serverStatus, setServerStatus] = useState("unknown"); // "online", "offline", "unknown"
   const { palette } = useTheme();
   const navigate = useNavigate();
   const token = useSelector((state) => state.token);
@@ -41,23 +44,91 @@ const UserWidget = ({ userId, picturePath, openInlineEdit = false }) => {
   const profileViewRecordedRef = useRef(false);
 
   const getUser = async () => {
-    const response = await fetch(`${API_URL}/users/${userId}`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json();
-    setUser(data);
+    if (!userId || !token) {
+      setError("Missing userId or token");
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log(`Fetching user data for ${userId} from ${API_URL}/users/${userId}`);
+      const response = await fetch(`${API_URL}/users/${userId}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+        // Add a timeout to prevent long hanging requests
+        signal: AbortSignal.timeout(10000) // 10 seconds timeout
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Error fetching user: ${response.status} ${response.statusText}`, errorText);
+        setError(`Error: ${response.status} ${response.statusText}`);
+        setServerStatus("offline");
+        return;
+      }
+      
+      const data = await response.json();
+      setUser(data);
+      setServerStatus("online");
+    } catch (err) {
+      console.error("Failed to fetch user data:", err);
+      setError(`Failed to fetch user data: ${err.message}`);
+      setServerStatus("offline");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check server status
+  const checkServerStatus = async () => {
+    try {
+      const response = await fetch(`${API_URL}/auth/test`, {
+        method: "GET",
+        // Add a timeout to prevent long hanging requests
+        signal: AbortSignal.timeout(5000) // 5 seconds timeout
+      });
+      
+      if (response.ok) {
+        console.log("Server is online");
+        setServerStatus("online");
+        return true;
+      } else {
+        console.log("Server returned error:", response.status);
+        setServerStatus("offline");
+        return false;
+      }
+    } catch (err) {
+      console.error("Server connectivity check failed:", err);
+      setServerStatus("offline");
+      return false;
+    }
   };
 
   useEffect(() => {
-    getUser();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-    // Record a profile view (Feature 26 Phase 1) once user data present & not own profile
-    useEffect(() => {
-      if (!user || !token) return;
-      if (loggedUser?._id === userId) return; // skip self views
-      // Fire only once per profileId until unmounted or userId changes
-      if (profileViewRecordedRef.current) return;
+    const loadData = async () => {
+      // First check if server is reachable
+      const isServerOnline = await checkServerStatus();
+      
+      if (isServerOnline) {
+        getUser();
+      } else {
+        setLoading(false);
+        setError("Cannot connect to server. Please try again later.");
+      }
+    };
+    
+    loadData();
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+    
+  // Record a profile view (Feature 26 Phase 1) once user data present & not own profile
+  useEffect(() => {
+    if (!user || !token) return;
+    if (loggedUser?._id === userId) return; // skip self views
+    // Fire only once per profileId until unmounted or userId changes
+    if (profileViewRecordedRef.current) return;
       profileViewRecordedRef.current = true; // lock before async to avoid rapid double fire
       let aborted = false;
       (async () => {
