@@ -16,6 +16,7 @@ import { useDispatch } from "react-redux";
 import { setLogin } from "state";
 import Dropzone from "react-dropzone";
 import FlexBetween from "components/FlexBetween";
+import PasswordStrengthIndicator, { checkPasswordStrength } from "components/PasswordStrengthIndicator";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -23,7 +24,13 @@ const registerSchema = yup.object().shape({
   firstName: yup.string().required("required"),
   lastName: yup.string().required("required"),
   email: yup.string().email("invalid email").required("required"),
-  password: yup.string().required("required"),
+  password: yup.string()
+    .required("required")
+    .test(
+      'is-strong-password',
+      'Password must be strong',
+      (value) => checkPasswordStrength(value).strength === 'strong'
+    ),
   location: yup.string().required("required"),
   occupation: yup.string().required("required"),
   picture: yup.string().required("required"),
@@ -52,6 +59,7 @@ const initialValuesLogin = {
 const Form = () => {
   const [pageType, setPageType] = useState("login");
   const [submitError, setSubmitError] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState({ strength: "weak", score: 0 });
   const { palette } = useTheme();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -232,13 +240,21 @@ const Form = () => {
               label="Password"
               type="password"
               onBlur={handleBlur}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                if (isRegister) {
+                  setPasswordStrength(checkPasswordStrength(e.target.value));
+                }
+              }}
               value={values.password}
               name="password"
               error={Boolean(touched.password) && Boolean(errors.password)}
               helperText={touched.password && errors.password}
               sx={{ gridColumn: "span 4" }}
             />
+            {isRegister && <Box sx={{ gridColumn: "span 4" }}>
+              <PasswordStrengthIndicator password={values.password} />
+            </Box>}
           </Box>
 
           {/* BUTTONS */}
@@ -251,12 +267,17 @@ const Form = () => {
             <Button
               fullWidth
               type="submit"
+              disabled={isRegister && (!values.password || checkPasswordStrength(values.password).strength !== "strong")}
               sx={{
                 m: "2rem 0",
                 p: "1rem",
                 backgroundColor: palette.primary.main,
                 color: palette.background.alt,
                 "&:hover": { color: palette.primary.main },
+                "&:disabled": {
+                  backgroundColor: palette.neutral.light,
+                  color: palette.neutral.main,
+                }
               }}
             >
               {isLogin ? "LOGIN" : "REGISTER"}
