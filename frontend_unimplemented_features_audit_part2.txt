@@ -1,0 +1,141 @@
+# MERN Social - Frontend Feature Audit (Continued)
+
+## 7. Engagement Metrics Implementation Details
+
+### Profile Views & Post Impressions (Phase 1 Complete)
+
+**Current Status**: ⚠️ PARTIAL - Backend counters implemented
+
+#### Phase 1 Implementation (2025-09-26)
+- Added `profileViewsTotal` counter to `User` model (increment-only, non-unique)
+- Added `impressions` counter (default 0) to `Post` model (increment-only)
+- New analytics endpoints established:
+  - POST /analytics/profile-view { profileUserId }
+  - POST /analytics/post-impressions { postIds: [] }
+  - GET /analytics/profile/:id/summary
+  - GET /analytics/post/:id/summary
+- JWT validation with self-view exclusion
+- BulkWrite optimization for impressions
+
+#### Future Phases Roadmap
+- **Phase 2**: Uniqueness handling, client-side deduplication, time-window suppression
+- **Phase 3**: Viewer list with privacy controls, metrics breakdown
+- **Phase 4**: Analytics dashboards, trends, daily aggregation
+- **Phase 5**: Anomaly detection and monitoring alerts
+
+#### Frontend Implementation Plan
+1. **Profile Page**:
+   - POST analytics/profile-view on mount
+   - Display counters with tooltip explanation
+   - Optional viewer chips with timeAgo formatting
+
+2. **Feed Components**:
+   - Track post visibility with IntersectionObserver
+   - Debounced batch reporting (1-2s intervals)
+   - Optimistic Redux updates for impression counts
+
+3. **Performance Considerations**:
+   - Session-based deduplication with Set
+   - Batch size limiting (max 50 IDs)
+   - Non-blocking fire-and-forget requests
+
+---
+
+## 8. Technical Details & Architecture
+
+### Real-time Implementation
+
+**Current Status**: ✅ IMPLEMENTED with enhancements planned
+
+#### Currently Working
+- SSE endpoint with 5 event types (post:new, post:like, comment:add/edit/delete)
+- Auto-subscription after authentication
+- Live Redux updates (new posts prepended, mutations merged)
+- Heartbeat detection and silence monitoring
+- Exponential backoff for reconnection
+- Event batching with 250ms coalescing window
+
+#### Potential Improvements
+- Selective subscriptions by friend or post visibility
+- Presence and typing indicators
+- WebSocket upgrade for bidirectional features
+- Client-side versioning for out-of-order events
+- Connection monitoring and diagnostics
+
+### Security & Resilience
+
+**Current Status**: ⚠️ PARTIAL - Basic protections in place
+
+#### Current Implementation
+- JWT authentication with proper storage
+- Bearer token usage (appropriate for SPA)
+- Embed sanitization with restricted permissions
+- Global error boundary for crash prevention
+
+#### Needed Improvements
+- Client-side rate limiting/throttling
+- More comprehensive error logging/monitoring
+- Stronger content security policy
+- Enhanced iframe sandbox rules
+
+---
+
+## 9. Code Cleanup Opportunities
+
+1. **Mobile Overflow Menu**: `MoreHorizOutlined` component without expanded actions
+2. **Legacy Media Paths**: `picturePath` usage now duplicative of `mediaPaths` system
+3. **GIF/Video Extraction**: Limited to first occurrence in some places
+4. **Error Handling Patterns**: Various approaches across components
+5. **Media Processing Logic**: Should be consolidated into shared utilities
+
+---
+
+## 10. Implementation Success Metrics
+
+For engagement features:
+- < 50ms average server latency per batch call
+- Accuracy within ±1 for impression counts
+- Maximum 1 analytics request per 2 seconds during normal scrolling
+
+For real-time features:
+- < 500ms end-to-end latency for event propagation
+- 99.9% event delivery rate
+- < 1% CPU overhead from SSE processing
+
+---
+
+## 11. Summary & Recommendations
+
+### Status Overview (Updated October 20, 2025)
+| Area | Status | Notes |
+|------|:------:|-------|
+| Core posting | ✅ | Text, media, audio fully functional |
+| Authentication | ✅ | Login, registration, protected routes |
+| Comments | ✅ | Add, edit, delete with optimistic updates |
+| Real-time | ⚠️ | Basic SSE working, enhancements needed |
+| Media handling | ⚠️ | Single file only, needs carousel |
+| Sharing | ❌ | UI exists but non-functional |
+| Deep linking | ❌ | No dedicated post routes |
+| Mobile experience | ⚠️ | Basic responsiveness, needs optimization |
+| Accessibility | ⚠️ | Some ARIA added, more work needed |
+
+### Priority Recommendations
+
+1. **Immediate Fixes (1-3 days)**
+   - Share functionality with progressive enhancement
+   - Post deep links for shareable content
+   - Media carousel for multiple attachments
+
+2. **Short-term Improvements (1-2 weeks)**
+   - Pagination or infinite scroll
+   - Enhanced mobile experience
+   - Audio player improvements
+
+3. **Medium-term Projects (2-4 weeks)**
+   - Cloud storage integration
+   - Complete analytics implementation
+   - Enhanced real-time features
+
+No evidence of over-engineering was found in the codebase. The audio recording feature is self-contained, test mocks are appropriate, and abstraction layers are reasonable for the application's complexity.
+
+--- End of Frontend Feature Audit ---

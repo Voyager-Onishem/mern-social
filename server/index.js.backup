@@ -23,7 +23,6 @@ import User from "./models/User.js";
 import Post from "./models/Post.js";
 import { users, posts } from "./data/index.js";
 import { EventEmitter } from 'events';
-import { cloudStorageConfig, getPublicUrl } from './config/cloudStorage.js';
 
 // Simple event bus for real-time notifications (SSE broadcast)
 export const realtimeBus = new EventEmitter();
@@ -45,13 +44,7 @@ app.use(bodyParser.json({ limit: "30mb", extended: true }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 app.use(cors());
 
-// Determine whether to use cloud storage or local storage
-const useCloudStorage = process.env.USE_CLOUD_STORAGE === 'true';
-
-// Log which storage system we're using
-console.log(`Using ${useCloudStorage ? 'Cloudinary cloud storage' : 'local file storage'}`);
-
-// Configure static file serving with proper cache control - only used when not using cloud storage
+// Configure static file serving with proper cache control
 app.use("/assets", express.static(path.join(__dirname, "public/assets"), {
   setHeaders: (res, path) => {
     // Check if the file is a video
@@ -67,8 +60,7 @@ app.use("/assets", express.static(path.join(__dirname, "public/assets"), {
 }));
 
 /* FILE STORAGE */
-// Local storage configuration
-const localStorage = multer.diskStorage({
+const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "public/assets");
   },
@@ -88,10 +80,6 @@ const localStorage = multer.diskStorage({
     }
   },
 });
-
-// Use the appropriate storage based on configuration
-const storage = useCloudStorage ? cloudStorageConfig : localStorage;
-
 // Accept common images, web-friendly video formats, and audio formats
 const MAX_FILE_SIZE_MB = parseInt(process.env.MAX_FILE_SIZE_MB || "25", 10);
 const upload = multer({
@@ -112,29 +100,8 @@ const upload = multer({
   },
 });
 
-// Middleware to process uploaded files and extract URLs for cloud storage
-export const processUploadedFiles = (req, res, next) => {
-  // For cloud storage, we need to extract URLs from the uploaded files
-  if (useCloudStorage) {
-    if (req.file) {
-      // Single file upload - get the URL from Cloudinary's response
-      req.file.filename = getPublicUrl(req.file);
-    }
-    
-    if (req.files && Array.isArray(req.files)) {
-      // Multiple files upload - get the URLs from Cloudinary's response
-      req.files.forEach(file => {
-        file.filename = getPublicUrl(file);
-      });
-    }
-  }
-  
-  next();
-};
-
 /* ROUTES WITH FILES */
-app.post("/auth/register", upload.single("picture"), processUploadedFiles, register);
-
+app.post("/auth/register", upload.single("picture"), register);
 // Accept either an image/video (picture) or audio file
 app.post(
   "/posts",
@@ -142,7 +109,6 @@ app.post(
   // Accept any file field name to be backward-compatible with clients
   // (we still validate mime types in fileFilter)
   upload.any(),
-  processUploadedFiles,
   createPost
 );
 

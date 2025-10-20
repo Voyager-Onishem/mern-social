@@ -1,101 +1,157 @@
-Frontend Feature Audit - Unimplemented / Non-Functional / Partial Items
-=====================================================================
+# MERN Social - Frontend Feature Audit
 
-Generated: 2025-09-25
-Scope: Entire React client under `client/src`.
+## Status Overview
 
-1. Implemented (Baseline + New)
-- Auth routing with `RequireAuth` for /home and /profile/:userId. (DONE)
-- Post creation: text + media (multi-image/video up to 5) + audio recording (voice message) + GIF URL embedding + external video URL embedding. (DONE)
-- Multi-media persistence via `mediaPaths` with migration fallback (legacy `picturePath`). (DONE)
-- Audio recording (MediaRecorder + waveform) and playback. (DONE)
-- Feed/profile post rendering with like & comment functionality. (DONE)
-- Share action (progressive: Web Share → clipboard → textarea fallback) with Snackbar feedback. (DONE)
-- Comment editing & deletion (inline edit, delete, edited indicator). (DONE)
-- GIF rendering inside comments (first GIF auto displayed as <img>). (DONE)
-- Object URL revocation for media previews. (DONE)
-- Relative time utilities (timeAgo/objectId) and theme switching logic via Redux `mode` (no visible toggle UI). (DONE)
- - Object URL revocation for media previews. (DONE)
- - Relative time utilities (timeAgo/objectId) and theme switching logic via Redux `mode` (no visible toggle UI). (DONE)
- - Snackbar error handling for like/comment/comment edit/delete & like failures (Quick Win B). (DONE)
- - Simple lightbox modal for images/videos with keyboard nav (Quick Win C). (DONE)
- - Location & occupation editing via profile dialog (Feature 6). (DONE)
- - Real-time feed baseline via SSE (new posts, likes, comments update live). (DONE)
+**Last Updated**: October 20, 2025  
+**Scope**: Entire React client under `client/src`
 
-2. Unimplemented / Non-Functional / Partial Features
-1. Share action (PARTIAL)
-   - UI: `ShareOutlined` icon shown per post.
-   - No onClick handler, no share dialog/copy link logic. Purely decorative.
-2. Comment editing/deletion (DONE)
-   - Cannot edit or delete existing comments. Only append new.
-3. Multiple media per post (DONE)
-   - Only one file allowed (image OR video OR audio). No gallery/carousel support.
-4. GIF rendering inside comments (DONE)
-    - Comment renderer now detects and displays all Giphy URLs as inline GIF images (lazy-loaded). Remaining text shown separately; multiple GIFs supported.
-5. Removing detected embeds
-   - Auto video/GIF detection in post text has no explicit UI to remove aside from manually deleting URL.
-6. Location editing (DONE)
-    - Implemented profile dialog (UserWidget) to update location & occupation; persists to backend and Redux.
-7. Profile page depth (PARTIAL)
-   - No avatar/bio edit or explicit friend management actions observed (friend widget code not included in scan).
-8. Robust Giphy error/loading states (DONE)
-    - Added: debounced search w/ abort, skeleton loaders, explicit error messaging + retry, graceful empty state, manual reload, keyboard '/' focus shortcut, lazy image loading & hover affordances. Still could add rate limiting/backoff (future).
-9. Accessibility gaps (NOT A PRIORITY)
-   - Icon-only buttons (like/share/GIF/audio) lack aria-labels.
-   - Waveform canvas lacks accessible alternative.
-10. Audio enhancements
-    - No pause/resume, trimming, duration metadata display, or re-record confirmation.
-11. Feedback on actions (PARTIAL)
-    - Snackbar error surfaced for like/comment/add/edit/delete and comment load; remaining: global provider & retry/optimistic patterns.
-12. Input validation UX (DONE)
-    - Added live character counters & soft limits (post: 500 chars, comment: 300 chars) with color thresholds (85% warn, >100% error) and disabled submission when exceeded.
-    - Future: externalize limits to config/env and add remaining field-specific validations (e.g., social links, role length).
-13. Shareable deep links
-    - No dedicated `/post/:id` route; cannot open a single post in isolation.
-14. Draft persistence (DONE)
-    - Post composer now saves draft (text + media file names + audio presence flag) to localStorage per user with debounce (400ms).
-    - Restores on mount (single restore notification). Clear Draft option added.
-    - Not persisting binary data (media/audio) to avoid storage bloat; future enhancement could inline small base64.
-15. Media labeling
-    - Audio posts labeled generically ("Voice message"); no duration length surface.
-16. Theme toggle UI (DONE)
-    - Implemented via navbar `IconButton` (light/dark) dispatching `setMode()`; accessible aria-label updates based on current mode.
-17. Friend add/remove
-    - Not verified in scanned code; if absent, friend list is read-only.
-18. Real-time updates (PARTIAL)
-        Implemented:
-            - Server-Sent Events (SSE) endpoint `/realtime` established.
-            - Broadcast events: post:new, post:like, comment:add, comment:edit, comment:delete.
-            - Client auto-subscribes after auth; Redux updates feed live (new post prepend, like/comment mutations merged).
-        Remaining / Potential Improvements:
-            a. Reconnect backoff & exponential retry (currently relies on EventSource implicit behavior / effect remount).
-            b. Heartbeat/ping interval (keep-alive for aggressive proxies; currently only initial ping).
-            c. Selective subscription / channel filtering (e.g., only friends' posts, or only visible post IDs).
-            d. Fallback to polling when EventSource unsupported or repeatedly failing.
-            e. Presence & typing indicators (would require additional event types + ephemeral state store).
-            f. Support post deletion / moderation events.
-            g. Batch events (coalesce rapid like/comment bursts to reduce re-renders).
-            h. Upgrade path to WebSocket for bidirectional features (back-pressure, acknowledgements, presence updates).
-            i. Client-side dedupe / version checks (ignore stale events if out-of-order delivery happens).
-            j. Metrics & monitoring (count active connections, log disconnect reasons, alert on abnormal churn).
-19. Error boundaries (DONE)
-    - Global <ErrorBoundary> now wraps the routed application (added 2025-09-26) to prevent cascade failures.
-    - Optional Enhancements (not yet implemented):
-        a. Per-widget granular boundaries around high-risk components (e.g., PostWidget, MyPostWidget, GiphyPicker) to isolate failures without losing the whole view.
-        b. Remote error logging: POST captured error + componentStack to a backend /logs/client-error endpoint (with rate limiting & redaction for PII) for observability.
-        c. Production-friendly minimal fallback UI (hide stack trace) with environment-based detail toggle; developer mode shows stack.
-20. Test coverage (PARTIAL – initial core widget tests added 2025-09-26)
-    - Added baseline tests: PostWidget (renders text & impressions), MyPostWidget (draft restore & clear draft visibility), Comment (multi-GIF rendering). More needed for GiphyPicker, audio recording flow, optimistic comment actions, SSE updates.
-21. Service worker/PWA
-    - No offline caching or install prompt despite share icon presence.
-22. Embed sanitization (DONE)
-    - Implemented centralized whitelist (YouTube/Vimeo/direct). Added sanitizeEmbed.js with provider normalization, sandbox, referrerPolicy, lazy loading, stripped permissions. Iframes now carry reduced allow list (no autoplay) & sandbox.
-23. Media compatibility
-    - Raw WEBM audio may have Safari compatibility issues (no fallback or transcoding).
-24. Loading states (DONE)
-    - Added feed/post list skeletons (already present) plus new comment list skeleton shimmer and user profile widget skeleton while user data loads.
-25. Pagination/infinite scroll
-    - Full feed loads in one request; no lazy load or page slicing.
+---
+
+## 1. Feature Implementation Status
+
+### Core Features - Fully Implemented ✅
+
+| Feature | Status | Notes |
+|---------|:------:|-------|
+| Auth routing | ✅ | `RequireAuth` wrapper for protected routes |
+| Login/Register | ✅ | Basic authentication with JWT |
+| Post creation (text) | ✅ | Text posting with character limits |
+| Media upload | ✅ | Image, video, GIF support |
+| Audio recording | ✅ | MediaRecorder with waveform visualization |
+| GIF embedding | ✅ | Giphy integration with search & preview |
+| Comment system | ✅ | Adding, editing, and deleting comments |
+| Like functionality | ✅ | Post and comment likes with counter |
+| Feed rendering | ✅ | Timeline of posts with media support |
+| GIF in comments | ✅ | Giphy URLs auto-display as inline images |
+| Theme toggle | ✅ | Light/dark mode with navbar button |
+| Location editing | ✅ | Profile dialog for location/occupation |
+| Draft persistence | ✅ | LocalStorage saving with clear option |
+| Input validation | ✅ | Character counters with thresholds |
+| Loading states | ✅ | Skeletons for feed, posts, and comments |
+| Error boundaries | ✅ | Global boundary to prevent cascade failures |
+| Embed sanitization | ✅ | YouTube/Vimeo with security restrictions |
+| Error feedback | ✅ | Snackbars for action failures |
+| Real-time updates | ✅ | SSE for new posts, likes, comments |
+
+### Partially Implemented Features ⚠️
+
+| Feature | Status | Current State | Needed Improvements |
+|---------|:------:|---------------|---------------------|
+| Share action | ⚠️ | UI exists but non-functional | Implement Web Share API → clipboard fallback |
+| Multiple media | ⚠️ | Only one file per post | Add gallery/carousel support |
+| Profile page | ⚠️ | Basic display | Add avatar/bio editing & friend management |
+| Removing embeds | ⚠️ | Manual URL deletion only | Add explicit UI remove buttons |
+| Media labeling | ⚠️ | Generic labels only | Add duration for audio, better descriptions |
+| Friend management | ⚠️ | Display only | Add/remove functionality |
+| Profile metrics | ⚠️ | Backend counters (Phase 1) | Client implementation & uniqueness |
+| Test coverage | ⚠️ | Basic component tests | Expand test suite |
+| Media compatibility | ⚠️ | WEBM audio format | Add transcoding for Safari |
+| Accessibility | ⚠️ | Basic ARIA added | More comprehensive a11y support |
+| SSE fallback | ⚠️ | Basic polling after failures | Adaptive interval & reconnection |
+
+### Unimplemented Features ❌
+
+| Feature | Priority | Description |
+|---------|:--------:|-------------|
+| Post deep links | HIGH | Dedicated `/post/:id` route for sharing |
+| Service worker/PWA | MEDIUM | Offline support & installation |
+| Pagination | HIGH | Infinite scroll or pagination controls |
+| Remote error logging | MEDIUM | Client-side error tracking service |
+| Rate limiting | MEDIUM | Client-side throttling for API calls |
+| Media carousel | HIGH | Multiple media files per post |
+| Audio enhancements | MEDIUM | Pause/resume, trimming, metadata |
+
+---
+
+## 2. Recent Improvements (Since September 2025)
+
+1. ✅ **Error Handling**: Global ErrorBoundary to prevent cascade failures
+2. ✅ **Accessibility**: ARIA labels for buttons and descriptive canvas labels
+3. ✅ **Media Limits**: Configurable via environment variables with server enforcement
+4. ✅ **Comment UX**: Tooltip showing edit timestamp for edited comments
+5. ✅ **Embed Management**: Remove buttons for detected video/GIF embeds
+6. ✅ **Real-time**: Heartbeat detection, exponential backoff, reconnection logic
+7. ✅ **Loading States**: Skeleton loaders for initial content loading
+8. ✅ **Optimistic Updates**: Comment add/edit/delete with failure rollback
+9. ✅ **Analytics**: Backend counters for profile views and post impressions
+10. ✅ **Event Batching**: 250ms coalescing window to reduce render thrash
+
+---
+
+## 3. Technical Improvement Opportunities
+
+### Quick Wins (1-2 days)
+
+1. **Share functionality**: Implement progressive Web Share API with clipboard fallback
+2. **Post deep links**: Create dedicated post page route with sharing support
+3. **Audio player enhancements**: Add pause/resume and duration display
+4. **Mobile optimization**: Improve touch interactions and navigation
+
+### Medium-Term Improvements (1-2 weeks)
+
+1. **Pagination/Infinite scroll**: With virtualization for performance
+2. **Image optimization pipeline**: Responsive images with compression
+3. **Enhanced comment system**: History view and threaded replies
+4. **Upload progress**: Add indicators and cancellation options
+5. **Real-time enhancements**: Presence and typing indicators
+
+### Longer-Term Projects (1+ months)
+
+1. **Cloud media storage**: CDN integration and migration
+2. **Offline support**: PWA capabilities with background sync
+3. **Analytics dashboard**: Comprehensive metrics and insights
+4. **Security hardening**: CSP and additional protection
+5. **Group functionality**: Create and join groups with specific feeds
+
+---
+
+## 4. Code Cleanup Opportunities
+
+1. **Mobile overflow menu**: `MoreHorizOutlined` without expanded actions
+2. **Legacy media paths**: `picturePath` now duplicative of `mediaPaths`
+3. **Error handling patterns**: Consolidate across components
+4. **Media handling functions**: Standardize into shared utilities
+
+---
+
+## 5. Engagement Metrics Implementation Status
+
+### Profile Views & Post Impressions (Phase 1 Complete)
+
+- ✅ **Backend**: Counters added to User and Post models
+- ✅ **API**: Analytics endpoints established
+- ✅ **Basic validation**: JWT verification & self-view exclusion
+- ✅ **Write optimization**: BulkWrite for impressions
+
+### Future Phases Planned
+
+- **Phase 2**: Uniqueness handling, session tracking, time-window suppression
+- **Phase 3**: Viewer list with privacy controls, metrics breakdown
+- **Phase 4**: Aggregated summaries and dashboards
+- **Phase 5**: Monitoring and anomaly detection
+
+---
+
+## 6. Real-time Updates Implementation Status
+
+### Current Implementation
+
+- ✅ **SSE endpoint**: `/realtime` established
+- ✅ **Event types**: post:new, post:like, comment:add/edit/delete
+- ✅ **Client integration**: Auto-subscription after auth
+- ✅ **Redux updates**: Live feed updates with mutations
+- ✅ **Heartbeat**: Silence detection implemented
+- ✅ **Reconnection**: Exponential backoff logic
+- ✅ **Event batching**: 250ms coalescing window
+
+### Planned Enhancements
+
+- **Selective subscriptions**: Filter by friends or visible posts
+- **Presence indicators**: Online status for users
+- **Typing indicators**: Real-time feedback during comment creation
+- **WebSocket upgrade**: For bidirectional features
+- **Client-side deduplication**: Ignore stale or duplicate events
+- **Metrics & monitoring**: Connection tracking and alerts
 
 26. Engagement metrics: Real profile views & post impressions (PARTIAL - Phase 1 backend counters)
       Phase 1 Implemented (2025-09-26):
