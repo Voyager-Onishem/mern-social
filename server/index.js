@@ -14,6 +14,7 @@ import userRoutes from "./routes/users.js";
 import postRoutes from "./routes/posts.js";
 import analyticsRoutes from "./routes/analytics.js";
 import searchRoutes from "./routes/search.js";
+import videosRoutes from "./routes/videos.js";
 import { register } from "./controllers/auth.js";
 import { createPost } from "./controllers/posts.js";
 import { verifyToken } from "./middleware/auth.js";
@@ -41,7 +42,21 @@ app.use(morgan("common"));
 app.use(bodyParser.json({ limit: "30mb", extended: true }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
 app.use(cors());
-app.use("/assets", express.static(path.join(__dirname, "public/assets")));
+
+// Configure static file serving with proper cache control
+app.use("/assets", express.static(path.join(__dirname, "public/assets"), {
+  setHeaders: (res, path) => {
+    // Check if the file is a video
+    if (path.endsWith('.mp4') || path.endsWith('.webm') || path.endsWith('.mov')) {
+      // For video files, set appropriate headers
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day cache
+    } else {
+      // For other assets
+      res.setHeader('Cache-Control', 'public, max-age=604800'); // 7 days cache
+    }
+  }
+}));
 
 /* FILE STORAGE */
 const storage = multer.diskStorage({
@@ -107,25 +122,79 @@ app.use("/users", userRoutes);
 app.use("/posts", postRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/search', searchRoutes);
+app.use('/videos', videosRoutes);
 
 // SSE endpoint for real-time updates
 app.get('/realtime', verifyToken, (req, res) => {
+  // Set proper headers for SSE
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders?.();
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering for nginx
+  
+  // Handle potential connection issues
+  req.socket.setTimeout(0);  // Disable timeout
+  req.socket.setNoDelay(true);  // Disable Nagle's algorithm
+  req.socket.setKeepAlive(true); // Enable keep-alive
+  
+  // Safely flush headers if the method is available
+  if (typeof res.flushHeaders === 'function') {
+    res.flushHeaders();
+  }
+  
+  const clientId = req.user?.id || 'anonymous';
+  console.log(`SSE: Client connected: ${clientId}`);
+  
+  // Event handler for real-time broadcasts
   const onEvent = (payload) => {
     try {
+      // Only send if connection is still open
+      if (res.writableEnded || res.finished) {
+        console.log(`SSE: Connection already closed for ${clientId}, can't send event`);
+        return;
+      }
+      
       res.write(`data: ${JSON.stringify(payload)}\n\n`);
     } catch (e) {
-      // client likely disconnected
+      console.error(`SSE: Error sending to client ${clientId}:`, e.message);
+      // Client likely disconnected - clean up
+      try {
+        realtimeBus.off('broadcast', onEvent);
+        if (!res.writableEnded) res.end();
+      } catch (cleanupErr) {
+        // Ignore cleanup errors
+      }
     }
   };
+  
+  // Register event handler
   realtimeBus.on('broadcast', onEvent);
-  // Initial ping to keep some proxies open
-  res.write('data: {"type":"ping"}\n\n');
+  
+  // Send initial ping to keep connection open
+  res.write('data: {"type":"ping","message":"Connection established"}\n\n');
+  
+  // Set up interval to send keepalive pings
+  const pingInterval = setInterval(() => {
+    try {
+      if (!res.writableEnded && !res.finished) {
+        res.write('data: {"type":"ping","timestamp":' + Date.now() + '}\n\n');
+      } else {
+        clearInterval(pingInterval);
+      }
+    } catch (e) {
+      clearInterval(pingInterval);
+    }
+  }, 30000); // Send ping every 30 seconds
+  
+  // Clean up when client disconnects
   req.on('close', () => {
+    console.log(`SSE: Client disconnected: ${clientId}`);
+    clearInterval(pingInterval);
     realtimeBus.off('broadcast', onEvent);
+    // Safely end the response if it's still writable
+    if (!res.writableEnded && !res.finished) {
+      try { res.end(); } catch (e) { /* ignore */ }
+    }
   });
 });
 

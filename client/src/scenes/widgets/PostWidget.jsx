@@ -13,6 +13,7 @@ import Friend from "components/Friend";
 import WidgetWrapper from "components/WidgetWrapper";
 import ProgressiveImage from "components/ProgressiveImage";
 import AnimatedLikeButton from "components/AnimatedLikeButton";
+import VideoPlayer from "components/VideoPlayer";
 import React, { useState, useRef, forwardRef, useEffect } from "react";
 import { extractFirstGiphyUrl, isGiphyUrl, extractGiphyUrls } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
@@ -24,6 +25,7 @@ import { setPost } from "state";
 import PostActionButton from "components/PostActionButton";
 import Lightbox from "components/Lightbox";
 import { sharePost, statusToMessage } from "utils/share";
+import { isVideoFile } from "utils/mediaHelpers";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -390,7 +392,13 @@ const PostWidget = forwardRef(({
                     sx={{ width: '100%', height: '100%', border: 0, borderRadius: 1 }}
                   />
                 ) : (
-                  <Box component="video" src={embed.src} controls sx={{ width: '100%', height: '100%', borderRadius: 1 }} />
+                  <VideoPlayer 
+                    src={embed.src} 
+                    width="100%" 
+                    height="100%" 
+                    sx={{ borderRadius: 1 }} 
+                    controls
+                  />
                 )}
               </Box>
             )}
@@ -428,7 +436,12 @@ const PostWidget = forwardRef(({
                   const src = `${API_URL}/assets/${mp}`;
                   return isVideo ? (
                     <Box key={idx} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }} sx={{ cursor: 'pointer' }}>
-                      <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
+                      <VideoPlayer 
+                        src={src} 
+                        width="100%" 
+                        sx={{ borderRadius: '0.75rem' }} 
+                        controls
+                      />
                     </Box>
                   ) : (
                     <Box key={idx}>
@@ -449,7 +462,12 @@ const PostWidget = forwardRef(({
                 const src = `${API_URL}/assets/${picturePath}`;
                 return isVideo ? (
                   <Box mt={1} sx={{ cursor: 'pointer' }} onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
-                    <Box component="video" src={src} controls sx={{ width: '100%', borderRadius: '0.75rem' }} />
+                    <VideoPlayer 
+                      src={src} 
+                      width="100%" 
+                      sx={{ borderRadius: '0.75rem' }} 
+                      controls
+                    />
                   </Box>
                 ) : (
                   <ProgressiveImage 
