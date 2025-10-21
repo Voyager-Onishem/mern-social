@@ -1,0 +1,35 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "create-story-files",
+			"type": "shell",
+			"command": "echo 'Creating individual story files from comprehensive stories.md'"
+		},
+		{
+			"label": "create-epic-1-1",
+			"type": "shell",
+			"command": "cd 'c:\\projects\\mern social\\docs\\stories' && type nul > epic-1-1.md"
+		},
+		{
+			"label": "create-date-range-filter",
+			"type": "shell",
+			"command": "cd 'c:\\projects\\mern social\\client\\src\\components' && type nul > DateRangeFilter.jsx"
+		},
+		{
+			"label": "create-date-range-filter-test",
+			"type": "shell",
+			"command": "cd 'c:\\projects\\mern social\\client\\src\\components' && type nul > DateRangeFilter.test.js"
+		},
+		{
+			"label": "create-jest-config",
+			"type": "shell",
+			"command": "cd 'c:\\projects\\mern social\\client' && type nul > jest.config.js"
+		},
+		{
+			"label": "create-simple-test",
+			"type": "shell",
+			"command": "cd 'c:\\projects\\mern social\\client\\src\\components' && type nul > DateRangeFilter.test.js"
+		}
+	]
+}
