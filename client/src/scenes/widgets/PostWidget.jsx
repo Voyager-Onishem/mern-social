@@ -463,7 +463,8 @@ const PostWidget = forwardRef(({
             // Once in viewport, load the actual media with progressive loading
             Array.isArray(mediaPaths) && mediaPaths.length > 0 ? (
               <Box display="flex" flexDirection="column" gap={1}>
-                {mediaPaths.map((mp, idx) => {
+                {/* Deduplicate media paths to prevent showing the same file twice */}
+                {[...new Set(mediaPaths)].map((mp, idx) => {
                   if (!mp) return null;
                   const lower = String(mp).toLowerCase();
                   const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
@@ -516,7 +517,8 @@ const PostWidget = forwardRef(({
           )}
         </Box>
       ) : null}
-      {!picturePath && (!mediaPaths || mediaPaths.length === 0) && audioPath && (
+      {/* Only show audio when no other media is present */}
+      {(!picturePath || (Array.isArray(mediaPaths) && mediaPaths.length === 0)) && audioPath && (
         <Box mt={1}>
           <Box component="audio" src={getMediaUrl(audioPath)} controls sx={{ width: '100%' }} />
         </Box>

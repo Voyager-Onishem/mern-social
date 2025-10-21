@@ -85,16 +85,11 @@ const MyPostWidget = ({ picturePath }) => {
     }
     
     if (mediaFiles.length > 0) {
-      // For backward compatibility with current backend (single picturePath/audioPath fields),
-      // we will send the first file in legacy fields and all files as an array 'media[]'
+      // Use the new media[] array for all files - don't use both approaches
       mediaFiles.forEach((file, idx) => {
         formData.append('media', file, file.name);
-        if (idx === 0) {
-          // Use original field names so existing server still attaches one
-          formData.append('picture', file); // server picks first image/video via mime check
-          formData.append('picturePath', file.name);
-        }
       });
+      // Don't add duplicate entries using picturePath/picture
     }
     if (audioBlob) {
       const fileName = `audio-${Date.now()}.webm`;
