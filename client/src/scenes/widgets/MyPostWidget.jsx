@@ -1,4 +1,4 @@
-import { EditOutlined, DeleteOutlined, GifBoxOutlined, ImageOutlined, MicOutlined, StopCircleOutlined, PlayArrow, Pause, MoreHorizOutlined, LocationOn } from "@mui/icons-material";
+import { EditOutlined, DeleteOutlined, GifBoxOutlined, ImageOutlined, MicOutlined, StopCircleOutlined, PlayArrow, Pause, MoreHorizOutlined } from "@mui/icons-material";
 import { Box, Divider, Typography, InputBase, useTheme, IconButton, useMediaQuery } from "@mui/material";
 import { useNotify } from "components/NotificationProvider";
 import FlexBetween from "components/FlexBetween";
@@ -25,11 +25,8 @@ const MyPostWidget = ({ picturePath }) => {
   const MAX_MEDIA_FILES = parseInt(process.env.REACT_APP_MAX_MEDIA_FILES || '5', 10);
   const [post, setPost] = useState("");
   const [location, setLocation] = useState(null);
-  const [isLocationExpanded, setIsLocationExpanded] = useState(false);
   const [giphyOpen, setGiphyOpen] = useState(false);
   const [submitError, setSubmitError] = useState("");
-  // Get user's default location from Redux state
-  const userLocation = useSelector((state) => state.auth?.user?.location);
   // Audio recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
@@ -360,45 +357,12 @@ const MyPostWidget = ({ picturePath }) => {
         </Box>
       </FlexBetween>
 
-      {/* Location Picker with collapsible UI */}
+      {/* Location Picker */}
       <Box mt={1} mb={1}>
-        {isLocationExpanded ? (
-          <LocationPicker
-            value={location}
-            onChange={(newLocation) => {
-              setLocation(newLocation);
-              // Collapse the picker after selecting a location
-              if (newLocation) {
-                setIsLocationExpanded(false);
-              }
-            }}
-            onBlur={() => {
-              if (location) {
-                setIsLocationExpanded(false);
-              }
-            }}
-          />
-        ) : (
-          <Box>
-            {/* Collapsed view showing just the location name */}
-            <Typography
-              color={medium}
-              variant="caption"
-              sx={{
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                "&:hover": {
-                  color: palette.primary.main,
-                },
-              }}
-              onClick={() => setIsLocationExpanded(true)}
-            >
-              <LocationOn fontSize="small" sx={{ fontSize: '0.9rem', mr: 0.5 }} />
-              posting from: {location ? (typeof location === 'object' ? location.formattedName : location) : userLocation}
-            </Typography>
-          </Box>
-        )}
+        <LocationPicker
+          value={location}
+          onChange={setLocation}
+        />
       </Box>
 
       {/* Recording popup */}

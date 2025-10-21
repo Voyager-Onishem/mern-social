@@ -1,4 +1,4 @@
-import { Box, Typography, Avatar, IconButton, TextField, Tooltip, CircularProgress } from "@mui/material";
+import { Box, Typography, Avatar, IconButton, TextField, Tooltip } from "@mui/material";
 import { EditOutlined, DeleteOutline, SaveOutlined, Close } from "@mui/icons-material";
 import { extractGiphyUrls } from "utils/isGiphyUrl";
 import { timeAgo } from "utils/timeAgo";
@@ -13,8 +13,6 @@ const Comment = ({
   editedAt,
   canEdit = false,
   isEditing = false,
-  isSaving = false,
-  isDeleting = false,
   editText = "",
   onStartEdit,
   onEditTextChange,
@@ -77,24 +75,15 @@ const Comment = ({
                     color="primary"
                     size="small"
                     onClick={() => onSaveEdit && onSaveEdit(commentId, editText)}
-                    disabled={!editText.trim() || isSaving}
+                    disabled={!editText.trim()}
                     aria-label="Save edited comment"
                   >
-                    {isSaving ? (
-                      <CircularProgress size={16} />
-                    ) : (
-                      <SaveOutlined fontSize="small" />
-                    )}
+                    <SaveOutlined fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
               <Tooltip title="Cancel" arrow>
-                <IconButton 
-                  size="small" 
-                  onClick={onCancelEdit} 
-                  disabled={isSaving}
-                  aria-label="Cancel editing comment"
-                >
+                <IconButton size="small" onClick={onCancelEdit} aria-label="Cancel editing comment">
                   <Close fontSize="small" />
                 </IconButton>
               </Tooltip>
@@ -128,28 +117,13 @@ const Comment = ({
       {canEdit && !isEditing && (
         <Box display="flex" alignItems="center" gap={0.5}>
           <Tooltip title="Edit" arrow>
-            <IconButton 
-              size="small" 
-              onClick={() => onStartEdit && onStartEdit(commentId, text)} 
-              aria-label="Edit comment"
-              disabled={isDeleting}
-            >
+            <IconButton size="small" onClick={() => onStartEdit && onStartEdit(commentId, text)} aria-label="Edit comment">
               <EditOutlined fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete" arrow>
-            <IconButton 
-              size="small" 
-              onClick={() => onDelete && onDelete(commentId)} 
-              color="error" 
-              aria-label="Delete comment"
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <CircularProgress size={16} color="error" />
-              ) : (
-                <DeleteOutline fontSize="small" />
-              )}
+            <IconButton size="small" onClick={() => onDelete && onDelete(commentId)} color="error" aria-label="Delete comment">
+              <DeleteOutline fontSize="small" />
             </IconButton>
           </Tooltip>
         </Box>

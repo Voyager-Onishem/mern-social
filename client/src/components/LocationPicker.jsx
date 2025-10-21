@@ -111,7 +111,7 @@ const LocationPicker = ({ value, onChange, onBlur }) => {
   };
 
   return (
-    <Box position="relative" className="location-picker">
+    <Box position="relative">
       <Box display="flex" alignItems="center">
         <TextField
           ref={inputRef}
