@@ -97,13 +97,24 @@ const Form = () => {
   const login = async (values, onSubmitProps) => {
     setSubmitError("");
     try {
+      // Log the values being sent for debugging
+      console.log("Sending login request with:", { 
+        email: values.email,
+        // Don't log the actual password, just its presence
+        hasPassword: !!values.password 
+      });
+      
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          email: values.email?.trim(),
+          password: values.password
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        console.error("Login failed with status:", res.status, data);
         setSubmitError(data?.msg || data?.error || data?.message || "Login failed.");
         return;
       }

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import FlexBetween from "components/FlexBetween";
 import WidgetWrapper from "components/WidgetWrapper";
 import { timeAgo } from "../utils/timeAgo";
+import { getMediaUrl } from "../utils/mediaHelpers";
 
 const SearchResultsWidget = ({ searchResults, isLoading, error, onClose }) => {
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ const SearchResultsWidget = ({ searchResults, isLoading, error, onClose }) => {
                 <ListItemAvatar>
                   <Avatar 
                     alt={`${user.firstName} ${user.lastName}`} 
-                    src={`${process.env.REACT_APP_API_URL || ""}/assets/${user.picturePath}`}
+                    src={getMediaUrl(user.picturePath)}
                   >
                     <Person />
                   </Avatar>
@@ -144,7 +145,7 @@ const SearchResultsWidget = ({ searchResults, isLoading, error, onClose }) => {
                       <Avatar 
                         variant="rounded" 
                         alt="Post media" 
-                        src={`${process.env.REACT_APP_API_URL || ""}/assets/${post.mediaPaths[0]}`}
+                        src={getMediaUrl(post.mediaPaths[0])}
                       >
                         <Description />
                       </Avatar>

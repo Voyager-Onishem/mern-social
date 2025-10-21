@@ -14,9 +14,14 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:6001';
 export const getMediaUrl = (path, options = {}) => {
   if (!path) return '';
   
-  // If it's already a full URL, return it
+  // If it's already a full URL (including Cloudinary URLs), return it directly
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
+  }
+  
+  // If it's a Cloudinary URL without the protocol (sometimes happens in development)
+  if (path.startsWith('res.cloudinary.com/')) {
+    return `https://${path}`;
   }
   
   // Remove any leading slash
@@ -51,6 +56,12 @@ export const isVideoFile = (path) => {
  */
 export const isApiUrl = (url) => {
   if (!url) return false;
+  
+  // Check if it's a Cloudinary URL (should be treated as external)
+  if (url.includes('cloudinary.com/')) {
+    return false;
+  }
+  
   return url.startsWith(API_BASE_URL) || url.startsWith('/assets/');
 };
 

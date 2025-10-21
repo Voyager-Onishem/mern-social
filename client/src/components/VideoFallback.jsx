@@ -18,8 +18,12 @@ const VideoFallback = ({ src, poster, fallbackImage, alt, ...props }) => {
       return;
     }
 
-    // Create a new URL that uses the dedicated video endpoint
-    if (src.includes('/assets/') && src.endsWith('.mp4')) {
+    // If it's a Cloudinary URL, use it directly
+    if (src.includes('cloudinary.com')) {
+      setDirectSrc(src);
+    }
+    // Create a new URL that uses the dedicated video endpoint for local files
+    else if (src.includes('/assets/') && src.endsWith('.mp4')) {
       // Replace /assets/ with /videos/ for better streaming
       const videoEndpointSrc = src.replace('/assets/', '/videos/').split('/').pop();
       setDirectSrc(`${process.env.REACT_APP_API_URL || 'http://localhost:6001'}/videos/${videoEndpointSrc}`);

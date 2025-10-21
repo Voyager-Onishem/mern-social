@@ -41,8 +41,27 @@ export const register = async (req, res) => {
 /* LOGGING IN */
 export const login = async (req, res) => {
   try {
+    // Enhanced request validation
+    if (!req.body) {
+      console.error('Login error: Empty request body');
+      return res.status(400).json({ msg: "Missing request body" });
+    }
+    
     const { email, password } = req.body;
+    
+    // Validate required fields
+    if (!email) {
+      console.error('Login error: Missing email');
+      return res.status(400).json({ msg: "Email is required" });
+    }
+    
+    if (!password) {
+      console.error('Login error: Missing password');
+      return res.status(400).json({ msg: "Password is required" });
+    }
+    
     console.log('Login attempt:', { email });
+    
     const user = await User.findOne({ email: email });
     if (!user) {
       console.error('Login error: User does not exist:', email);
