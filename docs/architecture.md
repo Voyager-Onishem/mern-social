@@ -352,3 +352,397 @@ server/
 - **Caching Layers**: Redis for session and data caching
 - **Database Optimization**: Read/write splitting and query optimization
 - **Monitoring Stack**: ELK stack for comprehensive observability
+
+---
+
+# Architecture Review for Brownfield Enhancements
+
+## Overview
+
+This section provides an architectural analysis and integration plan for the remaining MERN Social platform enhancements identified in the Brownfield Enhancement PRD. The review focuses on how new features will integrate with the existing MERN stack architecture while maintaining system stability and performance.
+
+## Enhancement Analysis
+
+### 1. Advanced Search and Filtering
+
+#### Current Architecture Impact
+- **Existing Search**: Basic text-based search via `/search` endpoint using MongoDB regex queries
+- **Database**: MongoDB with Mongoose ODM, current indexing on basic fields
+- **Frontend**: Simple text input with results display in SearchResultsWidget
+
+#### Proposed Architecture Changes
+
+**Backend Enhancements:**
+```
+Search Controller (Enhanced)
+├── Basic Text Search (existing)
+├── Advanced Filters
+│   ├── Date Range Queries
+│   ├── Media Type Filtering
+│   ├── Engagement Metrics
+│   └── Location-based Search
+├── Pagination & Sorting
+└── Query Optimization
+```
+
+**Database Schema Updates:**
+```javascript
+// Enhanced Post indexes
+Post.collection.createIndex({
+  createdAt: -1,
+  mediaPaths: 1,
+  likes: 1,
+  comments: 1
+});
+
+// User search indexes
+User.collection.createIndex({
+  location: "2dsphere",
+  occupation: 1,
+  createdAt: -1
+});
+```
+
+**API Endpoint Extensions:**
+```javascript
+// Enhanced search endpoint
+GET /search/advanced?query=text&filters={
+  dateFrom: "2025-01-01",
+  dateTo: "2025-12-31",
+  mediaTypes: ["image", "video"],
+  engagement: { minLikes: 10, minComments: 5 },
+  location: { lat: 40.7128, lng: -74.0060, radius: 50 },
+  sortBy: "engagement",
+  page: 1,
+  limit: 20
+}
+```
+
+#### Integration Strategy
+- **Backward Compatibility**: Existing `/search` endpoint remains unchanged
+- **Progressive Enhancement**: New `/search/advanced` endpoint for enhanced features
+- **Database Migration**: Add compound indexes without downtime
+- **Caching**: Redis integration for frequently accessed search results
+
+### 2. Real-time Notifications System
+
+#### Current Architecture Impact
+- **Existing SSE**: `/realtime` endpoint with 4 event types (post:new, like:add/remove, comment:add)
+- **Client Integration**: Redux updates via SSE event handling
+- **Connection Management**: Auto-reconnect with exponential backoff
+
+#### Proposed Architecture Changes
+
+**Notification Data Model:**
+```javascript
+// New Notification model
+{
+  userId: String (required),
+  type: String (enum: ['like', 'comment', 'friend_request', 'mention']),
+  title: String,
+  message: String,
+  relatedPostId: String,
+  relatedUserId: String,
+  isRead: { type: Boolean, default: false },
+  createdAt: Date,
+  expiresAt: Date // For auto-cleanup
+}
+```
+
+**Enhanced SSE Architecture:**
+```
+Real-time System (Enhanced)
+├── Feed Updates (existing)
+├── Notifications
+│   ├── User-specific Events
+│   ├── Preference-based Filtering
+│   ├── Bulk Operations
+│   └── Push Notifications
+└── Connection Management
+    ├── Selective Subscriptions
+    ├── Presence Indicators
+    └── Typing Indicators (future)
+```
+
+**Database Schema:**
+```javascript
+// Notification indexes
+Notification.collection.createIndex({
+  userId: 1,
+  isRead: 1,
+  createdAt: -1
+});
+
+// User preferences extension
+User.schema.add({
+  notificationPreferences: {
+    likes: { type: Boolean, default: true },
+    comments: { type: Boolean, default: true },
+    friendRequests: { type: Boolean, default: true },
+    mentions: { type: Boolean, default: true }
+  },
+  notificationsLastRead: Date
+});
+```
+
+#### Integration Strategy
+- **Database Extension**: Add Notification model with TTL indexes
+- **SSE Enhancement**: Extend existing event system with user-specific notifications
+- **Client State**: Add notification slice to Redux store
+- **UI Integration**: Notification panel in navbar with unread count
+
+### 3. Complete Cloud Storage Migration
+
+#### Current Architecture Impact
+- **Dual Storage**: Local files + Cloudinary integration via `USE_CLOUD_STORAGE` flag
+- **Configuration**: Environment-based storage selection
+- **Migration**: Partial implementation with CloudStorageModal
+
+#### Proposed Architecture Changes
+
+**Unified Storage Abstraction:**
+```
+Storage System (Enhanced)
+├── Storage Strategy
+│   ├── Primary: Cloud Storage (Cloudinary)
+│   ├── Fallback: Local Storage
+│   └── Migration: Background Process
+├── Upload Pipeline
+│   ├── Validation & Processing
+│   ├── CDN Optimization
+│   └── URL Generation
+└── Migration Tools
+    ├── Batch Migration Script
+    ├── Progress Tracking
+    └── Rollback Capability
+```
+
+**Migration Architecture:**
+```javascript
+// Migration controller
+class StorageMigration {
+  async migrateUserAssets(userId) {
+    // 1. Get all user-related assets
+    // 2. Upload to cloud storage
+    // 3. Update database URLs
+    // 4. Verify and cleanup local files
+  }
+  
+  async migratePostAssets(postId) {
+    // Similar process for post media
+  }
+  
+  async batchMigrate(options) {
+    // Background migration with progress tracking
+  }
+}
+```
+
+**Configuration Management:**
+```javascript
+// Enhanced storage configuration
+const storageConfig = {
+  primary: process.env.STORAGE_PROVIDER || 'cloudinary',
+  providers: {
+    cloudinary: {
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      apiKey: process.env.CLOUDINARY_API_KEY,
+      apiSecret: process.env.CLOUDINARY_API_SECRET
+    },
+    local: {
+      uploadPath: './server/public/assets',
+      baseUrl: process.env.API_URL || 'http://localhost:6001'
+    }
+  },
+  migration: {
+    batchSize: 10,
+    concurrency: 3,
+    retryAttempts: 3
+  }
+};
+```
+
+#### Integration Strategy
+- **Zero Downtime**: Migration runs in background without affecting active users
+- **Fallback System**: Automatic fallback to local storage on cloud failures
+- **Monitoring**: Migration progress tracking and error reporting
+- **Cost Optimization**: CDN usage analytics and optimization
+
+### 4. Enhanced Accessibility & Performance
+
+#### Current Architecture Impact
+- **Existing Accessibility**: ARIA labels on interactive elements
+- **Performance**: Basic optimizations with lazy loading and caching
+
+#### Proposed Architecture Changes
+
+**Accessibility Enhancements:**
+```
+Accessibility Layer
+├── ARIA Enhancements
+│   ├── Comprehensive Labels
+│   ├── Live Regions for Updates
+│   ├── Focus Management
+│   └── Keyboard Navigation
+├── Screen Reader Support
+│   ├── Semantic HTML Structure
+│   ├── Skip Links
+│   └── Alternative Text
+└── High Contrast Support
+    ├── Theme Extensions
+    ├── Color Contrast Validation
+    └── User Preferences
+```
+
+**Performance Optimizations:**
+```
+Performance Layer
+├── Frontend Optimizations
+│   ├── Virtual Scrolling for Lists
+│   ├── Image Optimization Pipeline
+│   ├── Bundle Splitting
+│   └── Service Worker Caching
+├── Backend Optimizations
+│   ├── Database Query Optimization
+│   ├── Response Compression
+│   ├── Connection Pooling
+│   └── Caching Strategy
+└── Real-time Performance
+    ├── Event Batching
+    ├── Selective Broadcasting
+    └── Connection Limits
+```
+
+#### Integration Strategy
+- **Progressive Enhancement**: Accessibility features don't break existing functionality
+- **Performance Monitoring**: Add performance metrics and alerting
+- **User Preferences**: Allow users to customize accessibility settings
+- **Testing**: Automated accessibility testing in CI/CD pipeline
+
+## Integration Architecture
+
+### Component Integration Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    React Client (Enhanced)                  │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
+│  │ Search      │ │ Notification│ │ Cloud       │ │ A11y    │ │
+│  │ Components  │ │ Components  │ │ Components │ │ Layer   │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              Redux Store (Enhanced)                      │ │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐         │ │
+│  │  │ Search      │ │ Notification│ │ User        │         │ │
+│  │  │ State       │ │ State       │ │ Preferences │         │ │
+│  │  └─────────────┘ └─────────────┘ └─────────────┘         │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────┬─────────────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Express API (Enhanced)                      │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────┐ │
+│  │ Advanced    │ │ Notification│ │ Storage     │ │ Perf.   │ │
+│  │ Search API  │ │ API         │ │ Migration   │ │ APIs    │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────┘ │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              Database Layer (Enhanced)                  │ │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐         │ │
+│  │  │ Search      │ │ Notification│ │ Migration   │         │ │
+│  │  │ Indexes     │ │ Collections │ │ Tracking    │         │ │
+│  │  └─────────────┘ └─────────────┘ └─────────────┘         │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow Architecture
+
+**Advanced Search Flow:**
+```
+User Input → Search Component → API Call → Database Query → Results → UI Update
+     ↓             ↓              ↓          ↓            ↓        ↓
+  Validation   State Update   Filtering   Indexing    Sorting  Rendering
+```
+
+**Notification Flow:**
+```
+Event Trigger → SSE Broadcast → Client Receive → State Update → UI Notification
+     ↓             ↓              ↓              ↓            ↓
+  Validation   User Filtering  Redux Update   Badge Update  Sound/Vibration
+```
+
+**Storage Migration Flow:**
+```
+Migration Trigger → Asset Discovery → Cloud Upload → DB Update → Local Cleanup
+      ↓                ↓                ↓            ↓            ↓
+  Scheduling      Batch Processing  Progress Track  URL Update   Verification
+```
+
+## Risk Assessment & Mitigation
+
+### Technical Risks
+
+| Risk | Impact | Mitigation Strategy |
+|------|--------|-------------------|
+| Database query performance degradation | High | Add indexes, query optimization, monitoring |
+| SSE connection overload | Medium | Event batching, selective broadcasting, connection limits |
+| Storage migration data loss | Critical | Comprehensive testing, rollback capability, backups |
+| Accessibility regression | Medium | Automated testing, manual QA, user feedback |
+
+### Integration Risks
+
+| Risk | Impact | Mitigation Strategy |
+|------|--------|-------------------|
+| Breaking existing API contracts | High | Backward compatibility, comprehensive testing |
+| UI component conflicts | Medium | Component isolation, gradual rollout |
+| Real-time event conflicts | Medium | Event versioning, client compatibility checks |
+| Performance regression | Medium | Performance monitoring, A/B testing |
+
+## Implementation Roadmap
+
+### Phase 1: Foundation (2-3 weeks)
+1. **Database Schema Updates**: Add indexes and new collections
+2. **API Extensions**: Implement enhanced endpoints
+3. **Basic UI Components**: Search filters, notification panel
+4. **Storage Abstraction**: Unified storage interface
+
+### Phase 2: Core Features (3-4 weeks)
+1. **Advanced Search Implementation**: Filters, pagination, sorting
+2. **Notification System**: Real-time notifications with preferences
+3. **Cloud Migration Tools**: Migration scripts and monitoring
+4. **Accessibility Enhancements**: ARIA improvements, keyboard navigation
+
+### Phase 3: Optimization & Testing (2-3 weeks)
+1. **Performance Optimization**: Query optimization, caching
+2. **Comprehensive Testing**: Unit, integration, and E2E tests
+3. **Monitoring & Analytics**: Performance metrics, error tracking
+4. **Documentation Updates**: API docs, user guides
+
+### Phase 4: Deployment & Monitoring (1-2 weeks)
+1. **Staged Rollout**: Feature flags, gradual deployment
+2. **User Acceptance Testing**: Beta testing with real users
+3. **Production Monitoring**: Performance tracking, error alerting
+4. **Post-launch Optimization**: Based on user feedback and metrics
+
+## Success Metrics
+
+### Technical Metrics
+- **Search Performance**: <500ms average query response time
+- **Notification Latency**: <1 second end-to-end notification delivery
+- **Storage Migration**: 99.9% successful migration rate
+- **Accessibility Score**: WCAG 2.1 AA compliance
+
+### User Experience Metrics
+- **Search Satisfaction**: 80%+ user satisfaction with search results
+- **Notification Engagement**: 60%+ notification open rate
+- **Performance**: <2 second page load times maintained
+- **Accessibility**: Zero critical accessibility issues
+
+### Business Metrics
+- **User Retention**: Maintain or improve current retention rates
+- **Feature Adoption**: 50%+ user adoption for new features within 3 months
+- **System Stability**: 99.5%+ uptime during and after deployment
+- **Development Velocity**: 20% improvement in feature delivery time
