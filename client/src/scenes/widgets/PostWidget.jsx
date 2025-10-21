@@ -139,9 +139,12 @@ const PostWidget = forwardRef(({
     // Check visibility after a short delay to ensure the DOM has updated
     const timeoutId = setTimeout(checkIfAlreadyVisible, 50);
     
+    // Capture the mediaRef.current in a variable to use in the cleanup function
+    const currentMediaRef = mediaRef.current;
+    
     return () => {
-      if (observerInstance && mediaRef.current) {
-        observerInstance.unobserve(mediaRef.current);
+      if (observerInstance && currentMediaRef) {
+        observerInstance.unobserve(currentMediaRef);
       }
       clearTimeout(timeoutId);
     };
@@ -623,6 +626,8 @@ const PostWidget = forwardRef(({
                         editedAt={comment.editedAt}
                         canEdit={isOwner}
                         isEditing={isEditingThis}
+                        isSaving={isEditingThis && isSavingEdit}
+                        isDeleting={isDeletingId === comment._id}
                         editText={isEditingThis ? editingText : ''}
                         onStartEdit={handleStartEdit}
                         onEditTextChange={setEditingText}
