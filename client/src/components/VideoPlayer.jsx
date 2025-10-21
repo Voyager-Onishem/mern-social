@@ -24,9 +24,28 @@ const VideoPlayer = ({
   const videoRef = useRef(null);
 
   // Process the source to get the correct URL
-  const videoSrc = isVideoFile(src) 
-    ? getMediaUrl(src, { useVideoEndpoint: true }) 
-    : src;
+  const processVideoSrc = () => {
+    if (!src) return '';
+    
+    // If the URL has the pattern /assets/https://cloudinary.com/...
+    if (src.includes('/assets/https://') && src.includes('cloudinary.com')) {
+      // Extract just the Cloudinary URL
+      const cloudinaryUrlMatch = src.match(/(https:\/\/.*cloudinary\.com\/.*)/);
+      if (cloudinaryUrlMatch && cloudinaryUrlMatch[1]) {
+        return cloudinaryUrlMatch[1];
+      }
+    }
+    
+    // If it's a normal video file
+    if (isVideoFile(src)) {
+      return getMediaUrl(src, { useVideoEndpoint: true });
+    }
+    
+    // Otherwise just return the source
+    return src;
+  };
+  
+  const videoSrc = processVideoSrc();
 
   useEffect(() => {
     // Reset states when src changes

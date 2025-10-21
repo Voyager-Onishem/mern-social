@@ -29,7 +29,24 @@ export const cloudStorageConfig = new CloudinaryStorage({
 // Helper function to extract public URL from storage response
 export const getPublicUrl = (file) => {
   // For Cloudinary - the main provider we're using
-  if (file.path) return file.path;
+  if (file.path) {
+    // Ensure the Cloudinary URL has the proper format with https protocol
+    if (file.path.includes('cloudinary.com')) {
+      // If it already has http/https, return as is
+      if (file.path.startsWith('http')) {
+        return file.path;
+      }
+      
+      // If it starts with //, add https:
+      if (file.path.startsWith('//')) {
+        return `https:${file.path}`;
+      }
+      
+      // Otherwise add https://
+      return `https://${file.path}`;
+    }
+    return file.path;
+  }
   
   // Fallback for local storage (development)
   if (file.filename) return `/assets/${file.filename}`;

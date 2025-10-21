@@ -14,18 +14,34 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:6001';
 export const getMediaUrl = (path, options = {}) => {
   if (!path) return '';
   
+  // Debug log to trace the path coming in
+  console.log('getMediaUrl received path:', path);
+  
+  // Fix incorrectly formatted URLs that have the local server path prepended to Cloudinary URLs
+  if (path && path.includes('/assets/https://')) {
+    // Extract the actual Cloudinary URL part
+    const cloudinaryUrlMatch = path.match(/(https:\/\/.*cloudinary\.com\/.*)/);
+    if (cloudinaryUrlMatch && cloudinaryUrlMatch[1]) {
+      return cloudinaryUrlMatch[1];
+    }
+  }
+  
   // If it's already a full URL (including Cloudinary URLs), return it directly
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
   
-  // If it's a Cloudinary URL without the protocol (sometimes happens in development)
-  if (path.startsWith('res.cloudinary.com/')) {
-    return `https://${path}`;
+  // If it contains cloudinary.com anywhere, it's probably a cloudinary URL
+  // This fixes cases where URLs are stored without protocol
+  if (path && path.includes('cloudinary.com')) {
+    // Ensure it has https:// prefix
+    return path.startsWith('//') ? `https:${path}` : 
+           path.startsWith('res.cloudinary.com') ? `https://${path}` : 
+           `https://${path}`;
   }
   
   // Remove any leading slash
-  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  const cleanPath = path ? (path.startsWith('/') ? path.substring(1) : path) : '';
   
   // Check if it's a video and should use the video endpoint
   if (options.useVideoEndpoint && isVideoFile(cleanPath)) {

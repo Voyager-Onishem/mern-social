@@ -25,7 +25,7 @@ import { setPost } from "state";
 import PostActionButton from "components/PostActionButton";
 import Lightbox from "components/Lightbox";
 import { sharePost, statusToMessage } from "utils/share";
-import { isVideoFile } from "utils/mediaHelpers";
+import { isVideoFile, getMediaUrl } from "utils/mediaHelpers";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -376,7 +376,10 @@ const PostWidget = forwardRef(({
     return paths.map(p => {
       const lower = String(p).toLowerCase();
       const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
-      return { src: `${API_URL}/assets/${p}`, type: isVideo ? 'video' : 'image' };
+      return { 
+        src: getMediaUrl(p, { useVideoEndpoint: isVideo }), 
+        type: isVideo ? 'video' : 'image' 
+      };
     });
   })();
 
@@ -464,7 +467,7 @@ const PostWidget = forwardRef(({
                   if (!mp) return null;
                   const lower = String(mp).toLowerCase();
                   const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
-                  const src = `${API_URL}/assets/${mp}`;
+                  const src = getMediaUrl(mp, { useVideoEndpoint: isVideo });
                   return isVideo ? (
                     <Box key={idx} onClick={() => { setLightboxIndex(idx); setLightboxOpen(true); }} sx={{ cursor: 'pointer' }}>
                       <VideoPlayer 
@@ -490,7 +493,7 @@ const PostWidget = forwardRef(({
               (() => {
                 const lower = String(picturePath).toLowerCase();
                 const isVideo = /\.(mp4|webm|ogg)$/i.test(lower);
-                const src = `${API_URL}/assets/${picturePath}`;
+                const src = getMediaUrl(picturePath, { useVideoEndpoint: isVideo });
                 return isVideo ? (
                   <Box mt={1} sx={{ cursor: 'pointer' }} onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}>
                     <VideoPlayer 
@@ -515,7 +518,7 @@ const PostWidget = forwardRef(({
       ) : null}
       {!picturePath && (!mediaPaths || mediaPaths.length === 0) && audioPath && (
         <Box mt={1}>
-          <Box component="audio" src={`${API_URL}/assets/${audioPath}`} controls sx={{ width: '100%' }} />
+          <Box component="audio" src={getMediaUrl(audioPath)} controls sx={{ width: '100%' }} />
         </Box>
       )}
       <FlexBetween mt="0.25rem">
