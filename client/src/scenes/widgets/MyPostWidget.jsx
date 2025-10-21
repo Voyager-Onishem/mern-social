@@ -1,4 +1,4 @@
-import { EditOutlined, DeleteOutlined, GifBoxOutlined, ImageOutlined, MicOutlined, StopCircleOutlined, PlayArrow, Pause, MoreHorizOutlined } from "@mui/icons-material";
+import { DeleteOutlined, GifBoxOutlined, ImageOutlined, PlayArrow, Pause, MoreHorizOutlined } from "@mui/icons-material";
 import { Box, Divider, Typography, InputBase, useTheme, IconButton, useMediaQuery } from "@mui/material";
 import { useNotify } from "components/NotificationProvider";
 import FlexBetween from "components/FlexBetween";
@@ -8,7 +8,7 @@ import WidgetWrapper from "components/WidgetWrapper";
 import LocationPicker from "components/LocationPicker";
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setPosts, addPost } from "state";
+import { addPost } from "state";
 import GiphyPicker from "components/GiphyPicker";
 import { extractFirstGiphyUrl, isGiphyUrl } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
@@ -29,14 +29,13 @@ const MyPostWidget = ({ picturePath }) => {
   const [submitError, setSubmitError] = useState("");
   // Audio recording state
   const [isRecording, setIsRecording] = useState(false);
-  const [recordSecs, setRecordSecs] = useState(0);
+  const [recordSecs] = useState(0);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState("");
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [restoredDraft, setRestoredDraft] = useState(false);
   const draftSaveTimeoutRef = useRef(null);
   const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
   const audioElRef = useRef(null);
   const streamRef = useRef(null);
   const timerRef = useRef(null);
@@ -45,7 +44,6 @@ const MyPostWidget = ({ picturePath }) => {
   const audioCtxRef = useRef(null);
   const analyserRef = useRef(null);
   const sourceRef = useRef(null);
-  const maxSeconds = 60;
   const { palette } = useTheme();
   const notify = useNotify();
   const { _id } = useSelector((state) => state.auth?.user || {});
@@ -203,49 +201,6 @@ const MyPostWidget = ({ picturePath }) => {
     cleanupRecordingGraphics();
   };
 
-  const startRecording = async () => {
-    try {
-      // reset any previous audio clip
-      if (audioUrl) { try { URL.revokeObjectURL(audioUrl); } catch {}
-      }
-      setAudioBlob(null);
-      setAudioUrl("");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const rec = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      audioChunksRef.current = [];
-      rec.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      rec.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        setAudioBlob(blob);
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
-      };
-      mediaRecorderRef.current = rec;
-      rec.start(100);
-      setIsRecording(true);
-      setRecordSecs(0);
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => {
-        setRecordSecs((s) => {
-          if (s + 1 >= maxSeconds) {
-            stopRecording();
-            return maxSeconds;
-          }
-          return s + 1;
-        });
-      }, 1000);
-  // Setup analyser for waveform drawing
-  audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-  analyserRef.current = audioCtxRef.current.createAnalyser();
-  analyserRef.current.fftSize = 1024;
-  sourceRef.current = audioCtxRef.current.createMediaStreamSource(stream);
-  sourceRef.current.connect(analyserRef.current);
-    } catch (e) {
-      notify('Microphone permission is required to record audio.', { severity: 'error' });
-    }
-  };
-
   useEffect(() => {
     return () => {
       if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -299,7 +254,7 @@ const MyPostWidget = ({ picturePath }) => {
     return () => {
       if (draftSaveTimeoutRef.current) clearTimeout(draftSaveTimeoutRef.current);
     };
-  }, [post, mediaFiles, audioBlob]);
+  }, [post, mediaFiles, audioBlob, location, DRAFT_KEY]);
 
   // Start drawing waveform after the recording UI and analyser are ready
   useEffect(() => {

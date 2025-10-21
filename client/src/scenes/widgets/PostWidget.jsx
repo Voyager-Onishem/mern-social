@@ -1,7 +1,5 @@
 import {
   ChatBubbleOutlineOutlined,
-  FavoriteBorderOutlined,
-  FavoriteOutlined,
   ShareOutlined,
   GifBoxOutlined,
   Close,
@@ -15,7 +13,7 @@ import ProgressiveImage from "components/ProgressiveImage";
 import AnimatedLikeButton from "components/AnimatedLikeButton";
 import VideoPlayer from "components/VideoPlayer";
 import React, { useState, useRef, forwardRef, useEffect } from "react";
-import { extractFirstGiphyUrl, isGiphyUrl, extractGiphyUrls } from "utils/isGiphyUrl";
+import { extractFirstGiphyUrl, extractGiphyUrls } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";
 import { timeAgo } from "utils/timeAgo";
 import { objectIdToDate } from "utils/objectId";
@@ -25,7 +23,7 @@ import { setPost } from "state";
 import PostActionButton from "components/PostActionButton";
 import Lightbox from "components/Lightbox";
 import { sharePost, statusToMessage } from "utils/share";
-import { isVideoFile, getMediaUrl } from "utils/mediaHelpers";
+import { getMediaUrl } from "utils/mediaHelpers";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -63,7 +61,6 @@ const PostWidget = forwardRef(({
   // Editing state
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingText, setEditingText] = useState("");
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState(null);
   const dispatch = useDispatch();
   const token = useSelector((state) => state.auth?.token);
@@ -125,10 +122,13 @@ const PostWidget = forwardRef(({
     // Set up the observer
     setupObserver();
     
+    // Capture the current element for cleanup
+    const currentElement = mediaRef.current;
+    
     // For newly created posts at the top of the feed, also load media immediately if they're already visible
     const checkIfAlreadyVisible = () => {
-      if (mediaRef.current) {
-        const rect = mediaRef.current.getBoundingClientRect();
+      if (currentElement) {
+        const rect = currentElement.getBoundingClientRect();
         if (rect.top >= 0 && rect.bottom <= window.innerHeight) {
           // Element is fully visible in the viewport
           setMediaLoaded(true);
@@ -140,8 +140,8 @@ const PostWidget = forwardRef(({
     const timeoutId = setTimeout(checkIfAlreadyVisible, 50);
     
     return () => {
-      if (observerInstance && mediaRef.current) {
-        observerInstance.unobserve(mediaRef.current);
+      if (observerInstance && currentElement) {
+        observerInstance.unobserve(currentElement);
       }
       clearTimeout(timeoutId);
     };
@@ -236,7 +236,6 @@ const PostWidget = forwardRef(({
 
   async function handleSaveEdit(commentId, newText) {
     if (!newText.trim()) return;
-    setIsSavingEdit(true);
     const original = currentComments.find(c => String(c._id) === String(commentId));
     const originalText = original?.text;
     setCurrentComments(prev => prev.map(c => String(c._id) === String(commentId) ? { ...c, text: newText, editedAt: new Date(), __optimistic: true } : c));
@@ -256,7 +255,6 @@ const PostWidget = forwardRef(({
       setErrorSnack({ open: true, message: 'Network error saving edit' });
       setCurrentComments(prev => prev.map(c => String(c._id) === String(commentId) ? { ...c, text: originalText, editedAt: original?.editedAt } : c));
     }
-    setIsSavingEdit(false);
   }
 
   async function handleDeleteComment(commentId) {

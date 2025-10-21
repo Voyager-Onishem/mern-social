@@ -139,3 +139,9 @@ For real-time features:
 No evidence of over-engineering was found in the codebase. The audio recording feature is self-contained, test mocks are appropriate, and abstraction layers are reasonable for the application's complexity.
 
 --- End of Frontend Feature Audit ---
+
+do each of the below steps one by one, stopping after each step to double check with me:
+
+1. Make the post widget include a small "posting from: ___" text. the styling (text size, colour) should be similar to "create ad" text in the ad widget. The blank in this "posting from" text should contain teh user's location from their profile (which is already the default). when clicked, it should expand into the location searchbar. when user hits enter, it should go back to the small text "posting from: ____" and the blank now contains either the user's input or the location from the API. 
+2. I want you to now integrate the location search BEHAVIOR of the post widget into the location field of the profile editing widget. also integrate the map opening "view on map" button next to the location field in the profile widget if the locaiton was selected from that API. 
+3. if the user's location was selected from the maps API, and the user doesn't change the post's location and keeps it default, make sure that the post has the "view on map" option similar to when the user selects a location from the maps api during post creation. 
