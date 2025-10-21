@@ -1,0 +1,90 @@
+🎭 BMad Orchestrator Response
+
+Based on your request to improve an existing MERN social app codebase with new features and bugfixes, I'll first list the specific tasks each agent can perform (based on their configured capabilities), then provide a rough brownfield workflow. Since this is a project-oriented request, I recommend using *workflow-guidance for personalized workflow selection.
+
+Agent Tasks & Commands
+All commands start with * (e.g., *agent pm to switch to PM agent, then *create-doc prd).
+
+Analyst Agent (*agent analyst)
+Role: Business Analyst - Market research, competitive analysis, requirements gathering
+Available Tasks:
+
+*document-project - Analyze existing codebase and create comprehensive documentation
+*create-doc - Create market analysis reports, competitive intelligence, requirement specifications
+*advanced-elicitation - Brainstorm and refine analysis through structured methods
+
+
+!! PM Agent (*agent pm)
+Role: Product Manager - PRD creation, feature prioritization, roadmaps, stakeholder communication
+Available Tasks:
+
+*create-doc prd - Create comprehensive Product Requirements Documents
+*create-doc brownfield-prd - Create enhancement-focused PRDs for existing apps
+*plan - Create detailed workflow plans
+*advanced-elicitation - Refine PRDs through stakeholder perspectives
+UX Expert Agent (*agent ux-expert)
+Role: UX Designer - User experience design, interface design, usability testing, user research
+Available Tasks:
+
+*create-doc - Create wireframes, user flows, usability reports, design systems
+*advanced-elicitation - Apply user-centered design thinking and critique
+*checklist - Run UX validation checklists
+Architect Agent (*agent architect)
+Role: Solution Architect - System design, technical architecture, scalability planning, technology selection
+Available Tasks:
+
+*create-doc architecture - Create technical architecture documents
+*create-doc brownfield-architecture - Design integration-focused architecture for existing systems
+*advanced-elicitation - Apply technical risk analysis and system design critique
+*checklist - Run architecture validation checklists
+PO Agent (*agent po)
+Role: Product Owner - Backlog management, story writing, acceptance criteria definition, sprint planning
+Available Tasks:
+
+*create-doc - Create user stories, acceptance criteria, sprint backlogs, release plans
+*checklist - Run master validation checklists for document consistency
+*advanced-elicitation - Refine stories through agile team perspectives
+Rough Brownfield Workflow for App Improvement
+For improving your existing MERN social app with new features and bugfixes, follow this brownfield enhancement workflow:
+
+Phase 1: Planning & Documentation (Web UI Recommended)
+Document Existing System (*agent analyst → *document-project)
+
+Upload codebase to web UI for comprehensive analysis
+Generate docs/prd.md and docs/architecture.md from existing code
+Create Enhancement PRD (*agent pm → *create-doc brownfield-prd)
+
+Define new features and bugfix priorities
+Include integration requirements with existing system
+Update Architecture (*agent architect → *create-doc brownfield-architecture)
+
+Design changes for new features
+Ensure scalability and compatibility
+Validate Consistency (*agent po → *checklist master)
+
+Ensure all documents align
+Confirm technical feasibility
+Phase 2: Development Setup (Switch to IDE)
+Shard Documents (*shard-doc docs/prd.md prd & *shard-doc docs/architecture.md architecture)
+
+Break down into manageable pieces in docs/prd/ and docs/architecture/
+Create Stories (*agent sm → *create-next-story)
+
+Generate user stories from sharded PRD sections
+Prioritize bugfixes and features
+Phase 3: Implementation Cycle (Sequential)
+Develop Features (*agent dev → implement approved story)
+
+One story at a time: Draft → Approved → InProgress → Done
+Include bugfixes in story scope
+Quality Assurance (*agent qa → review and refactor)
+
+Test implemented changes
+Ensure no regressions
+Repeat until all prioritized features/bugfixes complete
+
+Key Considerations for Your MERN Social App:
+Focus on user authentication, posts, comments, and social features
+Prioritize database migrations and API changes
+Test thoroughly for existing user data integrity
+Consider cloud storage integration (I see you have Cloudinary setup)
