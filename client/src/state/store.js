@@ -1,6 +1,7 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import authReducer from "./index";
 import adsReducer from "./adsSlice";
+import notificationsReducer from "./notificationsSlice";
 import storage from "redux-persist/lib/storage";
 import {
   persistReducer,
@@ -17,7 +18,8 @@ const persistConfig = { key: "root", storage, version: 1 };
 // Combine reducers
 const rootReducer = combineReducers({
   auth: authReducer,
-  ads: adsReducer
+  ads: adsReducer,
+  notifications: notificationsReducer
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

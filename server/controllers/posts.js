@@ -1,6 +1,7 @@
 import Post from "../models/Post.js";
 import User from "../models/User.js";
 import { realtimeBus } from '../index.js';
+import { createNotification } from './notifications.js';
 
 // Helper to normalize a Post document/plain object for JSON responses
 function serializePost(p) {
@@ -45,6 +46,20 @@ export const addComment = async (req, res) => {
       { new: true }
     );
     if (!updatedPost) return res.status(404).json({ message: "Post not found" });
+    
+    // Create notification for post owner (if commenter is not the owner)
+    if (updatedPost.userId !== userId) {
+      await createNotification({
+        userId: updatedPost.userId,
+        type: 'comment',
+        fromUserId: userId,
+        fromUserName: `${user.firstName} ${user.lastName}`,
+        fromUserPicture: user.picturePath,
+        postId: id,
+        message: `${user.firstName} ${user.lastName} commented on your post`,
+      });
+    }
+    
     res.status(200).json(serializePost(updatedPost));
     realtimeBus.emit('broadcast', { type: 'comment:add', postId: id, post: serializePost(updatedPost) });
   } catch (err) {
@@ -277,6 +292,23 @@ export const likePost = async (req, res) => {
     // Persist back (Mongoose will coerce plain object into Map)
     post.likes = likesObj;
     await post.save();
+    
+    // Create notification for post owner (if liker is not the owner and it's a new like)
+    if (!alreadyLiked && post.userId !== userId) {
+      const user = await User.findById(userId);
+      if (user) {
+        await createNotification({
+          userId: post.userId,
+          type: 'like',
+          fromUserId: userId,
+          fromUserName: `${user.firstName} ${user.lastName}`,
+          fromUserPicture: user.picturePath,
+          postId: id,
+          message: `${user.firstName} ${user.lastName} liked your post`,
+        });
+      }
+    }
+    
     const fresh = await Post.findById(id);
     const serialized = serializePost(fresh);
     res.status(200).json(serialized);

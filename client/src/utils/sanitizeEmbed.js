@@ -44,4 +44,5 @@ export function detectSuspiciousEmbed(url) {
   return null;
 }
 
-export default { sanitizeIframeSrc, SAFE_IFRAME_ATTRS, isTrustedEmbedUrl, detectSuspiciousEmbed };
+const embedUtils = { sanitizeIframeSrc, SAFE_IFRAME_ATTRS, isTrustedEmbedUrl, detectSuspiciousEmbed };
+export default embedUtils;

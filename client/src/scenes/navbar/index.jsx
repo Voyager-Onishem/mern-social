@@ -27,6 +27,7 @@ import {
 } from "@mui/icons-material";
 import { searchApi } from "../../api/searchApi.js";
 import SearchResultsWidget from "components/SearchResultsWidget.jsx";
+import NotificationWidget from "components/NotificationWidget.jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { setMode, setLogout } from "state";
 import { useNavigate } from "react-router-dom";
@@ -204,7 +205,7 @@ const Navbar = () => {
             </IconButton>
           </FlexBetween>
           <Message sx={{ fontSize: "25px" }} />
-          <Notifications sx={{ fontSize: "25px" }} />
+          <NotificationWidget />
           <Help sx={{ fontSize: "25px" }} />
           <FormControl variant="standard" value={fullName}>
             <Select
@@ -307,7 +308,7 @@ const Navbar = () => {
               )}
             </IconButton>
             <Message sx={{ fontSize: "25px" }} />
-            <Notifications sx={{ fontSize: "25px" }} />
+            <NotificationWidget />
             <Help sx={{ fontSize: "25px" }} />
             <FormControl variant="standard" value={fullName}>
               <Select

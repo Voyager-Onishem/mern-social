@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import { createNotification } from './notifications.js';
 
 /* READ */
 export const getUser = async (req, res) => {
@@ -120,6 +121,16 @@ export const addRemoveFriend = async (req, res) => {
       // Add friend
       user.friends.push(friendId);
       friend.friends.push(id);
+      
+      // Send notification to the friend being added
+      await createNotification({
+        userId: friendId,
+        type: 'friend_accept',
+        fromUserId: id,
+        fromUserName: `${user.firstName} ${user.lastName}`,
+        fromUserPicture: user.picturePath,
+        message: `${user.firstName} ${user.lastName} accepted your friend request`,
+      });
     }
     
     await user.save();

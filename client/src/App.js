@@ -13,6 +13,7 @@ import RequireAuth from "components/RequireAuth";
 import ErrorBoundary from "components/ErrorBoundary";
 import TokenSynchronizer from "components/TokenSynchronizer";
 import NetworkStatusMonitor from "components/NetworkStatusMonitor";
+import { initializeSocket, disconnectSocket } from "utils/socketClient";
 
 function App() {
   // Updated to access mode and token from the new Redux structure
@@ -20,6 +21,19 @@ function App() {
   const theme = useMemo(() => createTheme(themeSettings(mode)), [mode]);
   const token = useSelector(state => state.auth?.token);
   const dispatch = useDispatch();
+
+  // Initialize socket on app load if user is already logged in
+  useEffect(() => {
+    if (token) {
+      const socket = initializeSocket(token);
+      socket.connect();
+      
+      return () => {
+        // Cleanup on unmount or token change
+        disconnectSocket();
+      };
+    }
+  }, [token]);
 
   const sseBackoffRef = useRef({ attempt: 0, timer: null });
   const pollTimerRef = useRef(null);
