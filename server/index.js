@@ -8,6 +8,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createServer } from "http";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
@@ -25,6 +26,7 @@ import Post from "./models/Post.js";
 import { users, posts } from "./data/index.js";
 import { EventEmitter } from 'events';
 import { cloudStorageConfig, getPublicUrl } from './config/cloudStorage.js';
+import { initializeSocket } from './config/socket.js';
 
 // Simple event bus for real-time notifications (SSE broadcast)
 export const realtimeBus = new EventEmitter();
@@ -34,6 +36,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
 export const app = express();
+const httpServer = createServer(app);
 if (!process.env.JWT_SECRET) {
   process.env.JWT_SECRET = "dev-secret-change-me";
   console.warn("JWT_SECRET not set. Using insecure development secret. Set JWT_SECRET in .env for production.");
@@ -319,8 +322,12 @@ async function startServer() {
       }
     }
     
+    // Initialize Socket.io
+    const io = initializeSocket(httpServer);
+    console.log("Socket.io initialized successfully");
+    
     if (process.env.NODE_ENV !== 'test') {
-      app.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
+      httpServer.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
     }
     /* ADD DATA ONE TIME */
     // User.insertMany(users);

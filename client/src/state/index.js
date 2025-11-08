@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { initializeSocket, disconnectSocket } from "../utils/socketClient";
 
 // Initialize with data from localStorage if available
 const loadInitialState = () => {
@@ -54,6 +55,12 @@ export const authSlice = createSlice({
       // Persist auth info to local storage
       localStorage.setItem("user", JSON.stringify(action.payload.user));
       localStorage.setItem("token", action.payload.token);
+      
+      // Initialize and connect socket
+      if (action.payload.token) {
+        const socket = initializeSocket(action.payload.token);
+        socket.connect();
+      }
     },
     setLogout: (state) => {
       state.user = null;
@@ -61,6 +68,9 @@ export const authSlice = createSlice({
       // Clear persisted auth info
       localStorage.removeItem("user");
       localStorage.removeItem("token");
+      
+      // Disconnect socket
+      disconnectSocket();
     },
     setFriends: (state, action) => {
       if (state.user) {
