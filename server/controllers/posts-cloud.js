@@ -1,6 +1,6 @@
 import Post from "../models/Post.js";
 import User from "../models/User.js";
-import { realtimeBus } from '../index.js';
+import { broadcastPostUpdate } from '../config/socket.js';
 
 // Helper to normalize a Post document/plain object for JSON responses
 function serializePost(p) {
@@ -113,7 +113,7 @@ export const createPost = async (req, res) => {
     const serializedNewPost = serializePost(newPost);
     
     // Broadcast only the single new post to avoid large payloads
-    realtimeBus.emit('broadcast', { type: 'post:new', post: serializedNewPost });
+    broadcastPostUpdate({ type: 'post:new', post: serializedNewPost });
     
     // Get the first page of posts with pagination for response
     const limit = 10;

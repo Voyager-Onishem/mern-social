@@ -1,3 +1,8 @@
+/**
+ * DEPRECATED: This file is a backup/alternate version and is NOT actively used.
+ * The main server entry point is index.js
+ * This file has NOT been updated with the Socket.io consolidation changes.
+ */
 import express from "express";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";

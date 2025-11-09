@@ -57,25 +57,33 @@ export const NotificationProvider = ({ children }) => {
     try {
       const socket = getSocket();
       
-      // Only set up listeners if socket is connected or connecting
-      if (!socket.connected && !socket.connecting) {
-        console.log('Socket not yet connected, will retry...');
-        return;
-      }
-      
       const handleNotification = (notification) => {
         dispatch(addNotification(notification));
         notify(notification.message, { severity: 'info', duration: 5000 });
       };
 
-      socket.on('notification', handleNotification);
+      // Wait for socket to connect before setting up listeners
+      if (socket.connected) {
+        socket.on('notification', handleNotification);
+      } else {
+        // Listen for connect event and then set up notification listener
+        const onConnect = () => {
+          socket.on('notification', handleNotification);
+        };
+        socket.once('connect', onConnect);
+        
+        return () => {
+          socket.off('connect', onConnect);
+          socket.off('notification', handleNotification);
+        };
+      }
 
       return () => {
         socket.off('notification', handleNotification);
       };
     } catch (err) {
       // Socket not initialized yet - this is OK, it will be initialized by App.js
-      console.log('Socket not yet initialized for notifications, will connect automatically');
+      console.log('Socket not yet initialized for notifications');
     }
   }, [token, user, dispatch, notify]);
 

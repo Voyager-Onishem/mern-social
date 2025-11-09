@@ -25,12 +25,8 @@ import { verifyToken } from "./middleware/auth.js";
 import User from "./models/User.js";
 import Post from "./models/Post.js";
 import { users, posts } from "./data/index.js";
-import { EventEmitter } from 'events';
 import { cloudStorageConfig, getPublicUrl } from './config/cloudStorage.js';
 import { initializeSocket } from './config/socket.js';
-
-// Simple event bus for real-time notifications (SSE broadcast)
-export const realtimeBus = new EventEmitter();
 
 /* CONFIGURATIONS */
 const __filename = fileURLToPath(import.meta.url);
@@ -174,80 +170,6 @@ app.use('/videos', videosRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/auth', pingRoutes); // Add ping endpoint under /auth/ping
 app.use('/cloudinary', cloudinaryRoutes); // Add cloudinary test endpoints
-
-// SSE endpoint for real-time updates
-app.get('/realtime', verifyToken, (req, res) => {
-  // Set proper headers for SSE
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering for nginx
-  
-  // Handle potential connection issues
-  req.socket.setTimeout(0);  // Disable timeout
-  req.socket.setNoDelay(true);  // Disable Nagle's algorithm
-  req.socket.setKeepAlive(true); // Enable keep-alive
-  
-  // Safely flush headers if the method is available
-  if (typeof res.flushHeaders === 'function') {
-    res.flushHeaders();
-  }
-  
-  const clientId = req.user?.id || 'anonymous';
-  console.log(`SSE: Client connected: ${clientId}`);
-  
-  // Event handler for real-time broadcasts
-  const onEvent = (payload) => {
-    try {
-      // Only send if connection is still open
-      if (res.writableEnded || res.finished) {
-        console.log(`SSE: Connection already closed for ${clientId}, can't send event`);
-        return;
-      }
-      
-      res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    } catch (e) {
-      console.error(`SSE: Error sending to client ${clientId}:`, e.message);
-      // Client likely disconnected - clean up
-      try {
-        realtimeBus.off('broadcast', onEvent);
-        if (!res.writableEnded) res.end();
-      } catch (cleanupErr) {
-        // Ignore cleanup errors
-      }
-    }
-  };
-  
-  // Register event handler
-  realtimeBus.on('broadcast', onEvent);
-  
-  // Send initial ping to keep connection open
-  res.write('data: {"type":"ping","message":"Connection established"}\n\n');
-  
-  // Set up interval to send keepalive pings
-  const pingInterval = setInterval(() => {
-    try {
-      if (!res.writableEnded && !res.finished) {
-        res.write('data: {"type":"ping","timestamp":' + Date.now() + '}\n\n');
-      } else {
-        clearInterval(pingInterval);
-      }
-    } catch (e) {
-      clearInterval(pingInterval);
-    }
-  }, 30000); // Send ping every 30 seconds
-  
-  // Clean up when client disconnects
-  req.on('close', () => {
-    console.log(`SSE: Client disconnected: ${clientId}`);
-    clearInterval(pingInterval);
-    realtimeBus.off('broadcast', onEvent);
-    // Safely end the response if it's still writable
-    if (!res.writableEnded && !res.finished) {
-      try { res.end(); } catch (e) { /* ignore */ }
-    }
-  });
-});
 
 // Multer/Upload error handler
 app.use((err, req, res, next) => {

@@ -16,6 +16,7 @@ export const initializeSocket = (server) => {
       credentials: true
     },
     pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
   // JWT Authentication middleware
@@ -37,10 +38,13 @@ export const initializeSocket = (server) => {
 
   // Connection event
   io.on('connection', (socket) => {
-    console.log(`User connected: ${socket.userId}`);
+    console.log(`User connected via Socket.io: ${socket.userId}`);
 
     // Join user to their own room for private messages
     socket.join(socket.userId);
+    
+    // Join a global room for broadcast events (posts, likes, comments)
+    socket.join('global');
 
     // Handle disconnect
     socket.on('disconnect', () => {
@@ -56,4 +60,11 @@ export const getIO = () => {
     throw new Error('Socket.io not initialized');
   }
   return io;
+};
+
+// Helper function to broadcast post updates to all connected clients
+export const broadcastPostUpdate = (event) => {
+  if (io) {
+    io.to('global').emit('post:update', event);
+  }
 };

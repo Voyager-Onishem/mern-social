@@ -4,14 +4,14 @@ import jwt from "jsonwebtoken";
  * verifyToken middleware
  * Accepts JWT in either:
  *  - Authorization: Bearer <token>
- *  - Query string ?token= (useful for EventSource /realtime where setting headers is awkward)
+ *  - Query string ?token= (legacy support, not recommended)
  *  - (Future) Cookie (not implemented yet)
  */
 export const verifyToken = async (req, res, next) => {
   try {
     let token = req.header("Authorization");
     if (!token) {
-      // Fallback to query parameter for SSE compatibility
+      // Fallback to query parameter for legacy compatibility
       if (req.query && typeof req.query.token === 'string') {
         token = `Bearer ${req.query.token}`;
       }
