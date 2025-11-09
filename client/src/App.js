@@ -14,6 +14,7 @@ import RequireAuth from "components/RequireAuth";
 import ErrorBoundary from "components/ErrorBoundary";
 import TokenSynchronizer from "components/TokenSynchronizer";
 import NetworkStatusMonitor from "components/NetworkStatusMonitor";
+import NetworkStatusIndicator from "components/NetworkStatusIndicator";
 import { initializeSocket, disconnectSocket } from "utils/socketClient";
 import { useSocketEvent } from "hooks/useSocket";
 
@@ -69,6 +70,7 @@ function App() {
           <CssBaseline />
           <TokenSynchronizer />
           <NetworkStatusMonitor />
+          <NetworkStatusIndicator />
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<LoginPage />} />
