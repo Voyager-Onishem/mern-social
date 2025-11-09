@@ -206,7 +206,9 @@ const Navbar = () => {
           </FlexBetween>
           <Message sx={{ fontSize: "25px" }} />
           <NotificationWidget />
-          <Help sx={{ fontSize: "25px" }} />
+          <IconButton onClick={() => navigate("/help")} aria-label="Help and FAQ">
+            <Help sx={{ fontSize: "25px" }} />
+          </IconButton>
           <FormControl variant="standard" value={fullName}>
             <Select
               value={fullName}
@@ -309,7 +311,9 @@ const Navbar = () => {
             </IconButton>
             <Message sx={{ fontSize: "25px" }} />
             <NotificationWidget />
-            <Help sx={{ fontSize: "25px" }} />
+            <IconButton onClick={() => navigate("/help")} aria-label="Help and FAQ">
+              <Help sx={{ fontSize: "25px" }} />
+            </IconButton>
             <FormControl variant="standard" value={fullName}>
               <Select
                 value={fullName}

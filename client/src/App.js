@@ -3,6 +3,7 @@ import HomePage from "scenes/homePage";
 import LoginPage from "scenes/loginPage";
 import ProfilePage from "scenes/profilePage";
 import CreateAdPage from "scenes/createAdPage";
+import HelpPage from "scenes/helpPage";
 import { useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { addPost, setPost } from 'state';
@@ -306,6 +307,10 @@ function App() {
                     <CreateAdPage />
                   </RequireAuth>
                 }
+              />
+              <Route
+                path="/help"
+                element={<HelpPage />}
               />
             </Routes>
           </ErrorBoundary>
