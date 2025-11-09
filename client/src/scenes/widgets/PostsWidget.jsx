@@ -445,10 +445,20 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   };
   
   // Scroll to target post if specified in URL
+  const hasScrolledToTarget = useRef(false);
+  
+  // Reset scroll flag when targetPostId changes
   useEffect(() => {
-    if (targetPostId && posts.length > 0) {
+    hasScrolledToTarget.current = false;
+  }, [targetPostId]);
+  
+  useEffect(() => {
+    if (targetPostId && posts.length > 0 && !hasScrolledToTarget.current) {
       const post = posts.find(p => p._id === targetPostId);
       if (post) {
+        // Mark as scrolled to prevent re-triggering
+        hasScrolledToTarget.current = true;
+        
         // Use a small delay to ensure the post is rendered
         setTimeout(() => {
           const element = targetPostRef.current[targetPostId];

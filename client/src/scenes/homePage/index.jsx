@@ -17,6 +17,7 @@ const HomePage = () => {
   const { _id, picturePath } = user || {};
   const location = useLocation();
   const [showDiagnostics, setShowDiagnostics] = useState(true);
+  const hasScrolledToPostRef = useRef(null);
 
   // Handle post query parameter and hash for scrolling to specific posts
   useEffect(() => {
@@ -24,13 +25,18 @@ const HomePage = () => {
     const searchParams = new URLSearchParams(location.search);
     const postId = searchParams.get('post');
     
-    // Check for post hash
-    if (window.location.hash && window.location.hash.startsWith('#post-')) {
-      scrollToPost(window.location.hash.substring(6)); // Remove #post- prefix
-    } 
-    // Check for query parameter
-    else if (postId) {
+    // Only scroll if we haven't already scrolled to this post
+    if (postId && hasScrolledToPostRef.current !== postId) {
+      hasScrolledToPostRef.current = postId;
       scrollToPost(postId);
+    }
+    // Check for post hash
+    else if (window.location.hash && window.location.hash.startsWith('#post-')) {
+      const hashPostId = window.location.hash.substring(6); // Remove #post- prefix
+      if (hasScrolledToPostRef.current !== hashPostId) {
+        hasScrolledToPostRef.current = hashPostId;
+        scrollToPost(hashPostId);
+      }
     }
   }, [location]);
 
