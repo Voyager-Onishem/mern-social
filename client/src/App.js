@@ -4,7 +4,7 @@ import LoginPage from "scenes/loginPage";
 import ProfilePage from "scenes/profilePage";
 import CreateAdPage from "scenes/createAdPage";
 import HelpPage from "scenes/helpPage";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { addPost, setPost } from 'state';
 import { CssBaseline, ThemeProvider } from "@mui/material";
@@ -14,7 +14,8 @@ import RequireAuth from "components/RequireAuth";
 import ErrorBoundary from "components/ErrorBoundary";
 import TokenSynchronizer from "components/TokenSynchronizer";
 import NetworkStatusMonitor from "components/NetworkStatusMonitor";
-import { initializeSocket, disconnectSocket, getSocket } from "utils/socketClient";
+import { initializeSocket, disconnectSocket } from "utils/socketClient";
+import { useSocketEvent } from "hooks/useSocket";
 
 function App() {
   // Updated to access mode and token from the new Redux structure
@@ -30,10 +31,17 @@ function App() {
     const socket = initializeSocket(token);
     socket.connect();
     
-    // Listen for post updates via Socket.io
-    const handlePostUpdate = (event) => {
-      if (!event) return;
-      
+    return () => {
+      // Cleanup on unmount or token change
+      disconnectSocket();
+    };
+  }, [token]);
+
+  // Listen for post updates via Socket.io using the custom hook
+  const handlePostUpdate = useCallback((event) => {
+    if (!event) return;
+    
+    try {
       switch (event.type) {
         case 'post:new':
           if (event.post) dispatch(addPost({ post: event.post }));
@@ -47,16 +55,12 @@ function App() {
         default:
           break;
       }
-    };
-    
-    socket.on('post:update', handlePostUpdate);
-    
-    return () => {
-      // Cleanup on unmount or token change
-      socket.off('post:update', handlePostUpdate);
-      disconnectSocket();
-    };
-  }, [token, dispatch]);
+    } catch (err) {
+      console.warn('Error processing post update:', err);
+    }
+  }, [dispatch]);
+
+  useSocketEvent('post:update', handlePostUpdate, [handlePostUpdate]);
 
   return (
     <div className="app">

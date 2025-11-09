@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import { Snackbar, Alert, Slide } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
-import { getSocket } from '../utils/socketClient';
 import { addNotification, setNotifications } from '../state/notificationsSlice';
 import { get } from '../utils/apiClient';
+import { useSocketEvent } from '../hooks/useSocket';
 
 const NotificationContext = createContext(null);
 
@@ -50,42 +50,18 @@ export const NotificationProvider = ({ children }) => {
     setQueue(q => [...q, { id: Date.now() + Math.random(), message, severity, duration }]);
   }, []);
 
-  // Listen for real-time notifications via Socket.io
-  useEffect(() => {
-    if (!token || !user) return;
+  // Listen for real-time notifications via Socket.io using custom hook
+  const handleNotification = useCallback((notification) => {
+    dispatch(addNotification(notification));
+    notify(notification.message, { severity: 'info', duration: 5000 });
+  }, [dispatch, notify]);
 
-    try {
-      const socket = getSocket();
-      
-      const handleNotification = (notification) => {
-        dispatch(addNotification(notification));
-        notify(notification.message, { severity: 'info', duration: 5000 });
-      };
-
-      // Wait for socket to connect before setting up listeners
-      if (socket.connected) {
-        socket.on('notification', handleNotification);
-      } else {
-        // Listen for connect event and then set up notification listener
-        const onConnect = () => {
-          socket.on('notification', handleNotification);
-        };
-        socket.once('connect', onConnect);
-        
-        return () => {
-          socket.off('connect', onConnect);
-          socket.off('notification', handleNotification);
-        };
-      }
-
-      return () => {
-        socket.off('notification', handleNotification);
-      };
-    } catch (err) {
-      // Socket not initialized yet - this is OK, it will be initialized by App.js
-      console.log('Socket not yet initialized for notifications');
-    }
-  }, [token, user, dispatch, notify]);
+  // Only set up socket listener if user is authenticated
+  useSocketEvent(
+    token && user ? 'notification' : null, 
+    handleNotification, 
+    [handleNotification]
+  );
 
   const handleClose = () => {
     setCurrent(null);
