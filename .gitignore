@@ -159,10 +159,18 @@ ehthumbs.db
 Thumbs.db
 docs/
 out/
+*.md
+*.docx
+*.pdf
+node_modules/
 # Testing
 coverage/
 .nyc_output/
+.bmad-core/
+.vscode/
+*.ps1
 
+server/public/assets/
 # Stryker mutation testing (both client and server have configs)
 reports/
 .stryker-tmp/
