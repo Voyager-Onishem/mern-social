@@ -1,0 +1,59 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Stryker Mutation Testing Configuration for Client-Side React Application",
+  "mutate": [
+    "src/utils/**/*.{js,jsx}",
+    "src/components/**/*.{js,jsx}",
+    "src/state/**/*.{js,jsx}",
+    "src/scenes/**/*.{js,jsx}",
+    "!src/**/*.test.{js,jsx}",
+    "!src/**/__tests__/**",
+    "!src/setupTests.js",
+    "!src/index.js"
+  ],
+  "testRunner": "jest",
+  "reporters": [
+    "html",
+    "clear-text",
+    "progress",
+    "dashboard"
+  ],
+  "coverageAnalysis": "perTest",
+  "jest": {
+    "projectType": "create-react-app",
+    "configFile": "jest.config.js",
+    "enableFindRelatedTests": true
+  },
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 50
+  },
+  "timeoutMS": 60000,
+  "timeoutFactor": 2,
+  "maxConcurrentTestRunners": 2,
+  "ignorePatterns": [
+    "node_modules",
+    "build",
+    "coverage",
+    ".stryker-tmp"
+  ],
+  "mutator": {
+    "plugins": [
+      "@stryker-mutator/javascript-mutator"
+    ],
+    "excludedMutations": []
+  },
+  "dashboard": {
+    "project": "github.com/Voyager-Onishem/mern-social",
+    "version": "master",
+    "module": "client"
+  },
+  "htmlReporter": {
+    "fileName": "mutation-report.html"
+  },
+  "clearTextReporter": {
+    "allowColor": true,
+    "logTests": true
+  }
+}

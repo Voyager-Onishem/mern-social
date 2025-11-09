@@ -2,6 +2,8 @@
  * Network resilience utilities for handling retries and offline scenarios
  */
 
+import React from 'react';
+
 /**
  * Retry a function with exponential backoff
  * @param {Function} fn - Async function to retry
@@ -298,6 +300,3 @@ export function useNetworkStatus() {
     status,
   };
 }
-
-// Note: Need to import React for the hook
-import React from 'react';

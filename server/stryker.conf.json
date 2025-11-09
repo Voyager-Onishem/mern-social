@@ -1,0 +1,53 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Stryker Mutation Testing Configuration for Server-Side Node.js Application",
+  "mutate": [
+    "controllers/**/*.js",
+    "middleware/**/*.js",
+    "services/**/*.js",
+    "routes/**/*.js",
+    "config/**/*.js",
+    "!**/*.test.{js,cjs}",
+    "!test/**",
+    "!index.js"
+  ],
+  "testRunner": "mocha",
+  "reporters": [
+    "html",
+    "clear-text",
+    "progress",
+    "json"
+  ],
+  "coverageAnalysis": "perTest",
+  "mochaOptions": {
+    "spec": [
+      "test/**/*.test.js"
+    ],
+    "timeout": 10000,
+    "require": [],
+    "ui": "bdd"
+  },
+  "thresholds": {
+    "high": 75,
+    "low": 55,
+    "break": 45
+  },
+  "timeoutMS": 60000,
+  "timeoutFactor": 2,
+  "maxConcurrentTestRunners": 2,
+  "ignorePatterns": [
+    "node_modules",
+    "coverage",
+    ".stryker-tmp",
+    "scripts",
+    "data"
+  ],
+  "dashboard": {
+    "project": "github.com/Voyager-Onishem/mern-social",
+    "version": "master",
+    "module": "server"
+  },
+  "htmlReporter": {
+    "fileName": "mutation-report.html"
+  }
+}
