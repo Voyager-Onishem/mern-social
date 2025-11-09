@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState, useRef, useEffect } from 'react';
+import { createContext, useCallback, useContext, useState, useEffect } from 'react';
 import { Snackbar, Alert, Slide } from '@mui/material';
 import { useSelector, useDispatch } from 'react-redux';
 import { getSocket } from '../utils/socketClient';
@@ -14,17 +14,41 @@ function SlideUp(props) {
 export const NotificationProvider = ({ children }) => {
   const [queue, setQueue] = useState([]); // { id, message, severity, duration }
   const [current, setCurrent] = useState(null);
-  const timerRef = useRef(null);
   const dispatch = useDispatch();
   const token = useSelector((state) => state.auth.token);
   const user = useSelector((state) => state.auth.user);
+
+  // Fetch notifications function
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await get('/notifications', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // response is already the JSON data, not wrapped in .data
+      dispatch(setNotifications(response));
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  }, [token, dispatch]);
 
   // Fetch notifications on mount
   useEffect(() => {
     if (token && user) {
       fetchNotifications();
     }
-  }, [token, user]);
+  }, [token, user, fetchNotifications]);
+
+  const processQueue = useCallback(() => {
+    if (current || queue.length === 0) return;
+    const [next, ...rest] = queue;
+    setCurrent(next);
+    setQueue(rest);
+  }, [current, queue]);
+
+  const notify = useCallback((message, { severity = 'info', duration = 3000 } = {}) => {
+    setQueue(q => [...q, { id: Date.now() + Math.random(), message, severity, duration }]);
+  }, []);
 
   // Listen for real-time notifications via Socket.io
   useEffect(() => {
@@ -53,29 +77,7 @@ export const NotificationProvider = ({ children }) => {
       // Socket not initialized yet - this is OK, it will be initialized by App.js
       console.log('Socket not yet initialized for notifications, will connect automatically');
     }
-  }, [token, user, dispatch]);
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await get('/notifications', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      dispatch(setNotifications(response.data));
-    } catch (err) {
-      console.error('Error fetching notifications:', err);
-    }
-  };
-
-  const processQueue = useCallback(() => {
-    if (current || queue.length === 0) return;
-    const [next, ...rest] = queue;
-    setCurrent(next);
-    setQueue(rest);
-  }, [current, queue]);
-
-  const notify = useCallback((message, { severity = 'info', duration = 3000 } = {}) => {
-    setQueue(q => [...q, { id: Date.now() + Math.random(), message, severity, duration }]);
-  }, []);
+  }, [token, user, dispatch, notify]);
 
   const handleClose = () => {
     setCurrent(null);

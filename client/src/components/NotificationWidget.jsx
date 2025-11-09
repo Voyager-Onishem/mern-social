@@ -55,7 +55,8 @@ const NotificationWidget = () => {
 
     // Navigate to relevant page
     if (notification.postId) {
-      navigate(`/post/${notification.postId}`);
+      // Navigate to home page with post query parameter to highlight the post
+      navigate(`/home?post=${notification.postId}`);
     } else if (notification.type === 'friend_request' || notification.type === 'friend_accept') {
       navigate(`/profile/${notification.fromUserId}`);
     }

@@ -1,8 +1,8 @@
-const io = require('socket.io-client');
-const { createServer } = require('http');
-const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
-const { initializeSocket } = require('../config/socket');
+import ioClient from 'socket.io-client';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import { initializeSocket } from '../config/socket.js';
 
 describe('Socket.io Notification System', () => {
   let httpServer;
@@ -12,7 +12,7 @@ describe('Socket.io Notification System', () => {
   const JWT_SECRET = 'test-secret';
   const userId = 'test-user-123';
 
-  beforeAll((done) => {
+  before((done) => {
     httpServer = createServer();
     ioServer = initializeSocket(httpServer);
     httpServer.listen(TEST_PORT, () => {
@@ -20,7 +20,7 @@ describe('Socket.io Notification System', () => {
     });
   });
 
-  afterAll((done) => {
+  after((done) => {
     if (ioServer) {
       ioServer.close();
     }
@@ -35,10 +35,10 @@ describe('Socket.io Notification System', () => {
     }
   });
 
-  test('should connect with valid token', (done) => {
+  it('should connect with valid token', (done) => {
     const token = jwt.sign({ id: userId }, JWT_SECRET);
     
-    clientSocket = io(`http://localhost:${TEST_PORT}`, {
+    clientSocket = ioClient(`http://localhost:${TEST_PORT}`, {
       auth: { token },
     });
 
@@ -52,8 +52,8 @@ describe('Socket.io Notification System', () => {
     });
   });
 
-  test('should reject connection without token', (done) => {
-    clientSocket = io(`http://localhost:${TEST_PORT}`, {
+  it('should reject connection without token', (done) => {
+    clientSocket = ioClient(`http://localhost:${TEST_PORT}`, {
       auth: {},
     });
 
@@ -67,8 +67,8 @@ describe('Socket.io Notification System', () => {
     });
   });
 
-  test('should reject connection with invalid token', (done) => {
-    clientSocket = io(`http://localhost:${TEST_PORT}`, {
+  it('should reject connection with invalid token', (done) => {
+    clientSocket = ioClient(`http://localhost:${TEST_PORT}`, {
       auth: { token: 'invalid-token' },
     });
 
@@ -82,10 +82,10 @@ describe('Socket.io Notification System', () => {
     });
   });
 
-  test('should receive notification event', (done) => {
+  it('should receive notification event', (done) => {
     const token = jwt.sign({ id: userId }, JWT_SECRET);
     
-    clientSocket = io(`http://localhost:${TEST_PORT}`, {
+    clientSocket = ioClient(`http://localhost:${TEST_PORT}`, {
       auth: { token },
     });
 
@@ -109,10 +109,10 @@ describe('Socket.io Notification System', () => {
     });
   });
 
-  test('should join user room on connect', (done) => {
+  it('should join user room on connect', (done) => {
     const token = jwt.sign({ id: userId }, JWT_SECRET);
     
-    clientSocket = io(`http://localhost:${TEST_PORT}`, {
+    clientSocket = ioClient(`http://localhost:${TEST_PORT}`, {
       auth: { token },
     });
 
@@ -130,10 +130,10 @@ describe('Socket.io Notification System', () => {
     });
   });
 
-  test('should handle disconnect', (done) => {
+  it('should handle disconnect', (done) => {
     const token = jwt.sign({ id: userId }, JWT_SECRET);
     
-    clientSocket = io(`http://localhost:${TEST_PORT}`, {
+    clientSocket = ioClient(`http://localhost:${TEST_PORT}`, {
       auth: { token },
     });
 
@@ -147,15 +147,15 @@ describe('Socket.io Notification System', () => {
     });
   });
 
-  test('should not receive notifications meant for other users', (done) => {
+  it('should not receive notifications meant for other users', (done) => {
     const token1 = jwt.sign({ id: 'user-1' }, JWT_SECRET);
     const token2 = jwt.sign({ id: 'user-2' }, JWT_SECRET);
     
-    const client1 = io(`http://localhost:${TEST_PORT}`, {
+    const client1 = ioClient(`http://localhost:${TEST_PORT}`, {
       auth: { token: token1 },
     });
 
-    const client2 = io(`http://localhost:${TEST_PORT}`, {
+    const client2 = ioClient(`http://localhost:${TEST_PORT}`, {
       auth: { token: token2 },
     });
 
@@ -193,10 +193,10 @@ describe('Socket.io Notification System', () => {
     });
   });
 
-  test('should maintain connection with ping/pong', (done) => {
+  it('should maintain connection with ping/pong', (done) => {
     const token = jwt.sign({ id: userId }, JWT_SECRET);
     
-    clientSocket = io(`http://localhost:${TEST_PORT}`, {
+    clientSocket = ioClient(`http://localhost:${TEST_PORT}`, {
       auth: { token },
     });
 

@@ -1,13 +1,14 @@
-const request = require('supertest');
-const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
-const jwt = require('jsonwebtoken');
+import request from 'supertest';
+import mongoose from 'mongoose';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import Post from '../models/Post.js';
+import Notification from '../models/Notification.js';
 
-// Import app and models
+// Note: We'll need to import the app differently since index.js doesn't export it
+// For now, we'll create a test instance
 let app;
-let User;
-let Post;
-let Notification;
 
 describe('Notification System Integration Tests', () => {
   let mongoServer;
@@ -17,22 +18,18 @@ describe('Notification System Integration Tests', () => {
   let token2;
   let testPost;
 
-  beforeAll(async () => {
+  before(async () => {
     // Start in-memory MongoDB
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
     await mongoose.connect(mongoUri);
 
-    // Import models after connection
-    User = require('../models/User').default;
-    Post = require('../models/Post').default;
-    Notification = require('../models/Notification').default;
-    
-    // Import app
-    app = require('../index').app;
+    // Import app - we'll need to dynamically import it
+    const indexModule = await import('../index.js');
+    app = indexModule.app || indexModule.default;
   });
 
-  afterAll(async () => {
+  after(async () => {
     await mongoose.disconnect();
     await mongoServer.stop();
   });
@@ -84,7 +81,7 @@ describe('Notification System Integration Tests', () => {
   });
 
   describe('GET /notifications', () => {
-    test('should return empty array when no notifications', async () => {
+    it('should return empty array when no notifications', async () => {
       const res = await request(app)
         .get('/notifications')
         .set('Authorization', `Bearer ${token1}`);
@@ -94,7 +91,7 @@ describe('Notification System Integration Tests', () => {
       expect(res.body.unreadCount).toBe(0);
     });
 
-    test('should return user notifications', async () => {
+    it('should return user notifications', async () => {
       // Create notifications for user1
       await Notification.create({
         userId: testUser1._id.toString(),
@@ -117,7 +114,7 @@ describe('Notification System Integration Tests', () => {
       expect(res.body.unreadCount).toBe(1);
     });
 
-    test('should return notifications in reverse chronological order', async () => {
+    it('should return notifications in reverse chronological order', async () => {
       await Notification.create({
         userId: testUser1._id.toString(),
         type: 'like',
@@ -147,7 +144,7 @@ describe('Notification System Integration Tests', () => {
       expect(res.body.notifications[1].message).toBe('First notification');
     });
 
-    test('should count unread notifications correctly', async () => {
+    it('should count unread notifications correctly', async () => {
       await Notification.create([
         {
           userId: testUser1._id.toString(),
@@ -185,7 +182,7 @@ describe('Notification System Integration Tests', () => {
   });
 
   describe('PATCH /notifications/:notificationId/read', () => {
-    test('should mark notification as read', async () => {
+    it('should mark notification as read', async () => {
       const notification = await Notification.create({
         userId: testUser1._id.toString(),
         type: 'like',
@@ -206,7 +203,7 @@ describe('Notification System Integration Tests', () => {
       expect(updated.read).toBe(true);
     });
 
-    test('should return 404 for non-existent notification', async () => {
+    it('should return 404 for non-existent notification', async () => {
       const fakeId = new mongoose.Types.ObjectId();
       
       const res = await request(app)
@@ -216,7 +213,7 @@ describe('Notification System Integration Tests', () => {
       expect(res.statusCode).toBe(404);
     });
 
-    test('should not mark another user\'s notification as read', async () => {
+    it('should not mark another user\'s notification as read', async () => {
       const notification = await Notification.create({
         userId: testUser2._id.toString(),
         type: 'like',
@@ -235,7 +232,7 @@ describe('Notification System Integration Tests', () => {
   });
 
   describe('PATCH /notifications/read-all', () => {
-    test('should mark all user notifications as read', async () => {
+    it('should mark all user notifications as read', async () => {
       await Notification.create([
         {
           userId: testUser1._id.toString(),
@@ -265,7 +262,7 @@ describe('Notification System Integration Tests', () => {
       expect(notifications.every(n => n.read)).toBe(true);
     });
 
-    test('should only mark current user\'s notifications', async () => {
+    it('should only mark current user\'s notifications', async () => {
       await Notification.create({
         userId: testUser2._id.toString(),
         type: 'like',
@@ -285,7 +282,7 @@ describe('Notification System Integration Tests', () => {
   });
 
   describe('DELETE /notifications/:notificationId', () => {
-    test('should delete notification', async () => {
+    it('should delete notification', async () => {
       const notification = await Notification.create({
         userId: testUser1._id.toString(),
         type: 'like',
@@ -305,7 +302,7 @@ describe('Notification System Integration Tests', () => {
       expect(deleted).toBeNull();
     });
 
-    test('should not delete another user\'s notification', async () => {
+    it('should not delete another user\'s notification', async () => {
       const notification = await Notification.create({
         userId: testUser2._id.toString(),
         type: 'like',
@@ -327,7 +324,7 @@ describe('Notification System Integration Tests', () => {
   });
 
   describe('Notification Triggers', () => {
-    test('should create notification when post is liked', async () => {
+    it('should create notification when post is liked', async () => {
       const res = await request(app)
         .patch(`/posts/${testPost._id}/like`)
         .set('Authorization', `Bearer ${token2}`)
@@ -345,7 +342,7 @@ describe('Notification System Integration Tests', () => {
       expect(notification.postId).toBe(testPost._id.toString());
     });
 
-    test('should create notification when post is commented on', async () => {
+    it('should create notification when post is commented on', async () => {
       const res = await request(app)
         .post(`/posts/${testPost._id}/comment`)
         .set('Authorization', `Bearer ${token2}`)
@@ -365,7 +362,7 @@ describe('Notification System Integration Tests', () => {
       expect(notification.fromUserId).toBe(testUser2._id.toString());
     });
 
-    test('should not create notification when user likes own post', async () => {
+    it('should not create notification when user likes own post', async () => {
       const res = await request(app)
         .patch(`/posts/${testPost._id}/like`)
         .set('Authorization', `Bearer ${token1}`)
