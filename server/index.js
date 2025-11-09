@@ -170,7 +170,7 @@ app.use('/analytics', analyticsRoutes);
 app.use('/search', searchRoutes);
 app.use('/videos', videosRoutes);
 app.use('/notifications', notificationRoutes);
-app.use('/auth', pingRoutes); // Add ping endpoint under /auth/ping
+app.use('/', pingRoutes); // Health check and ping endpoints at root level
 app.use('/cloudinary', cloudinaryRoutes); // Add cloudinary test endpoints
 
 // Multer/Upload error handler
