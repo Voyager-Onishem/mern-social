@@ -34,25 +34,54 @@ export const recordPostImpressions = async (req, res) => {
     }
     const viewerId = req.user?.id;
     if (!viewerId) return res.status(401).json({ message: 'Unauthorized' });
-    // Phase 1: naive increment for each provided post ID.
-    // Defensive: filter out clearly invalid ObjectIds (previously could trigger CastError despite comment to "ignore").
+    
+    // Filter out invalid ObjectIds
     const validIds = postIds.filter(id => typeof id === 'string' && mongoose.Types.ObjectId.isValid(id));
     if (!validIds.length) {
-      return res.status(200).json({ impressions: [] }); // nothing valid; treat as no-op
-    }
-    const ops = validIds.map(id => ({
-      updateOne: {
-        filter: { _id: id },
-        update: { $inc: { impressions: 1 } }
-      }
-    }));
-    if (ops.length) {
-      await Post.bulkWrite(ops, { ordered: false });
+      return res.status(200).json({ impressions: [] });
     }
 
-    // Fetch current counts for the requested posts (only those that exist)
-    const posts = await Post.find({ _id: { $in: validIds } }).select('_id impressions');
-    return res.status(200).json({ impressions: posts.map(p => ({ postId: p._id, impressions: p.impressions })) });
+    // Process each post to track unique impressions
+    const results = [];
+    const now = new Date();
+    
+    for (const postId of validIds) {
+      try {
+        const post = await Post.findById(postId);
+        if (!post) continue; // Skip non-existent posts
+        
+        // Check if this user has already viewed this post
+        const userImpressionData = post.impressionsByUser?.get(viewerId);
+        
+        if (!userImpressionData) {
+          // First time this user is viewing this post - count as new impression
+          const viewData = {
+            count: 1,
+            firstViewedAt: now,
+            lastViewedAt: now
+          };
+          
+          post.impressionsByUser.set(viewerId, viewData);
+          post.impressions = (post.impressions || 0) + 1; // Increment unique impression count
+          await post.save();
+          
+          results.push({ postId: post._id, impressions: post.impressions, isNew: true });
+        } else {
+          // User has viewed before - update view metadata but don't increment impression count
+          userImpressionData.count += 1;
+          userImpressionData.lastViewedAt = now;
+          post.impressionsByUser.set(viewerId, userImpressionData);
+          await post.save();
+          
+          results.push({ postId: post._id, impressions: post.impressions, isNew: false });
+        }
+      } catch (err) {
+        console.error(`Error recording impression for post ${postId}:`, err);
+        // Continue processing other posts
+      }
+    }
+
+    return res.status(200).json({ impressions: results });
   } catch (err) {
     return res.status(500).json({ message: err.message || 'Failed to record impressions' });
   }
@@ -77,6 +106,41 @@ export const getProfileViewSummary = async (req, res) => {
     return res.status(200).json({ profileUserId: user._id, profileViewsTotal: user.profileViewsTotal });
   } catch (err) {
     return res.status(500).json({ message: err.message || 'Failed to fetch profile view summary' });
+  }
+};
+
+// Check which posts the current user has already viewed
+export const checkUserPostViews = async (req, res) => {
+  try {
+    const { postIds } = req.body || {};
+    if (!Array.isArray(postIds) || !postIds.length) {
+      return res.status(400).json({ message: 'postIds array required' });
+    }
+    const viewerId = req.user?.id;
+    if (!viewerId) return res.status(401).json({ message: 'Unauthorized' });
+    
+    const validIds = postIds.filter(id => typeof id === 'string' && mongoose.Types.ObjectId.isValid(id));
+    if (!validIds.length) {
+      return res.status(200).json({ viewedPosts: {} });
+    }
+
+    const posts = await Post.find({ _id: { $in: validIds } }).select('_id impressionsByUser');
+    const viewedPosts = {};
+    
+    posts.forEach(post => {
+      const userView = post.impressionsByUser?.get(viewerId);
+      if (userView) {
+        viewedPosts[post._id.toString()] = {
+          count: userView.count,
+          firstViewedAt: userView.firstViewedAt,
+          lastViewedAt: userView.lastViewedAt
+        };
+      }
+    });
+
+    return res.status(200).json({ viewedPosts });
+  } catch (err) {
+    return res.status(500).json({ message: err.message || 'Failed to check post views' });
   }
 };
 

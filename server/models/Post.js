@@ -38,8 +38,17 @@ const postSchema = mongoose.Schema(
         editedAt: { type: Date },
       },
     ],
-    // Phase 1 Feature 26: simple (non-unique) impressions counter
-    impressions: { type: Number, default: 0 },
+    // Impression tracking (unique per user)
+    impressions: { type: Number, default: 0 }, // Total unique impression count
+    impressionsByUser: {
+      type: Map,
+      of: {
+        count: { type: Number, default: 1 }, // How many times this user viewed it
+        firstViewedAt: { type: Date, default: Date.now }, // When first viewed
+        lastViewedAt: { type: Date, default: Date.now }, // Most recent view
+      },
+      default: new Map()
+    },
   },
   { timestamps: true }
 );

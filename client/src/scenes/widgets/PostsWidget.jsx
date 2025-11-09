@@ -218,6 +218,39 @@ const PostsWidget = ({ userId, isProfile = false }) => {
     }
   }, [userId, isProfile]); // eslint-disable-line react-hooks/exhaustive-deps
   
+  // Check which posts the user has already viewed (to sync session tracking with server)
+  useEffect(() => {
+    if (!token || !posts.length) return;
+    
+    const checkViewedPosts = async () => {
+      try {
+        const postIds = posts.map(p => p._id);
+        const response = await fetch(`${API_URL}/analytics/check-post-views`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ postIds })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Mark posts that user has already viewed in this or previous sessions
+          if (data.viewedPosts) {
+            Object.keys(data.viewedPosts).forEach(postId => {
+              dispatch(markPostSeenThisSession({ postId }));
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to check viewed posts:', err);
+      }
+    };
+    
+    checkViewedPosts();
+  }, [posts, token, dispatch]);
+  
   // Enhanced infinite scrolling with Intersection Observer and adaptive preloading
   useEffect(() => {
     // Initialize rootMargin with a default value
@@ -502,20 +535,32 @@ const PostsWidget = ({ userId, isProfile = false }) => {
       const payload = ids;
       pendingRef.current = {};
       try {
-        // optimistic local increment (only once per session)
-        payload.forEach(id => {
-          dispatch(markPostSeenThisSession({ postId: id }));
-          dispatch(incrementPostImpression({ postId: id, amount: 1 }));
-        });
+        // Send to server to check uniqueness and record impression
         const resp = await fetch(`${API_URL}/analytics/post-impressions`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ postIds: payload })
         });
-        await resp.json().catch(()=>({}));
-        // We rely on server counts later (Phase 2) for reconciliation if needed.
-      } catch {
-        // swallow: non-critical
+        const data = await resp.json().catch(() => ({ impressions: [] }));
+        
+        // Only increment locally for posts that were NEW impressions on the server
+        if (data.impressions && Array.isArray(data.impressions)) {
+          data.impressions.forEach(({ postId, impressions, isNew }) => {
+            // Mark as seen in session regardless
+            dispatch(markPostSeenThisSession({ postId: postId.toString() }));
+            
+            // Only increment if server confirmed it's a new unique impression
+            if (isNew) {
+              dispatch(incrementPostImpression({ postId: postId.toString(), amount: 1 }));
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to record impressions:', err);
+        // On error, still mark as seen to avoid retry loops
+        payload.forEach(id => {
+          dispatch(markPostSeenThisSession({ postId: id }));
+        });
       }
     };
     const scheduleFlush = () => {

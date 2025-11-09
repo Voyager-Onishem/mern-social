@@ -7,6 +7,7 @@ import {
   getProfileViewSummary,
   getUserImpressionsSummary,
   resetAllEngagementCounters,
+  checkUserPostViews,
 } from '../controllers/analytics.js';
 
 const router = express.Router();
@@ -14,6 +15,7 @@ const router = express.Router();
 // Phase 1 analytics endpoints
 router.post('/profile-view', verifyToken, recordProfileView);
 router.post('/post-impressions', verifyToken, recordPostImpressions);
+router.post('/check-post-views', verifyToken, checkUserPostViews);
 router.get('/post/:id/summary', verifyToken, getPostImpressionSummary);
 router.get('/profile/:id/summary', verifyToken, getProfileViewSummary);
 router.get('/user/:id/impressions', verifyToken, getUserImpressionsSummary);
