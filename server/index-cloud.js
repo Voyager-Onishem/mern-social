@@ -3,9 +3,20 @@
  * The main server entry point is index.js
  * This file has NOT been updated with the Socket.io consolidation changes.
  */
-import express from "express";
-import bodyParser from "body-parser";
-import mongoose from "mongoose";
+/**
+ * DEPRECATED: This file is no longer used.
+ * 
+ * The application now uses a unified approach in index.js that supports
+ * both local and cloud storage via the mediaStorage service.
+ * 
+ * See: server/services/mediaStorage.js
+ * Use: server/index.js (unified server)
+ * 
+ * This file is kept for reference only and will be removed in future versions.
+ */
+
+// All functionality has been moved to index.js with unified storage handling
+export default null;
 import cors from "cors";
 import dotenv from "dotenv";
 import multer from "multer";

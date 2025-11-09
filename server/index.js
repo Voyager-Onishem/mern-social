@@ -25,7 +25,8 @@ import { verifyToken } from "./middleware/auth.js";
 import User from "./models/User.js";
 import Post from "./models/Post.js";
 import { users, posts } from "./data/index.js";
-import { cloudStorageConfig, getPublicUrl } from './config/cloudStorage.js';
+import { cloudStorageConfig } from './config/cloudStorage.js';
+import { mediaStorage, getPublicUrl } from './services/mediaStorage.js';
 import { initializeSocket } from './config/socket.js';
 
 /* CONFIGURATIONS */
@@ -55,10 +56,11 @@ app.use(cors({
 }));
 
 // Determine whether to use cloud storage or local storage
-const useCloudStorage = process.env.USE_CLOUD_STORAGE === 'true';
+const useCloudStorage = mediaStorage.isCloudStorage();
 
 // Log which storage system we're using
-console.log(`Using ${useCloudStorage ? 'Cloudinary cloud storage' : 'local file storage'}`);
+console.log(`Using ${mediaStorage.getStorageType()} storage (${useCloudStorage ? 'Cloudinary' : 'local files'})`);
+console.log('Storage info:', mediaStorage.getStorageInfo());
 
 // Configure static file serving with proper cache control - only used when not using cloud storage
 app.use("/assets", express.static(path.join(__dirname, "public/assets"), {
@@ -123,19 +125,19 @@ const upload = multer({
 
 // Middleware to process uploaded files and extract URLs for cloud storage
 export const processUploadedFiles = (req, res, next) => {
-  // For cloud storage, we need to extract URLs from the uploaded files
-  if (useCloudStorage) {
-    if (req.file) {
-      // Single file upload - get the URL from Cloudinary's response
-      req.file.filename = getPublicUrl(req.file);
-    }
-    
-    if (req.files && Array.isArray(req.files)) {
-      // Multiple files upload - get the URLs from Cloudinary's response
-      req.files.forEach(file => {
-        file.filename = getPublicUrl(file);
-      });
-    }
+  // Process uploaded files using the unified media storage service
+  if (req.file) {
+    // Single file upload
+    const processed = mediaStorage.processUploadedFile(req.file);
+    req.file.filename = processed.url;
+  }
+  
+  if (req.files && Array.isArray(req.files)) {
+    // Multiple files upload
+    const processed = mediaStorage.processUploadedFiles(req.files);
+    req.files.forEach((file, index) => {
+      file.filename = processed[index].url;
+    });
   }
   
   next();

@@ -2,6 +2,7 @@ import Post from "../models/Post.js";
 import User from "../models/User.js";
 import { broadcastPostUpdate } from '../config/socket.js';
 import { createNotification } from './notifications.js';
+import { mediaStorage } from '../services/mediaStorage.js';
 
 // Helper to normalize a Post document/plain object for JSON responses
 function serializePost(p) {
@@ -331,5 +332,60 @@ export const purgeAudioPosts = async (req, res) => {
     return res.status(200).json({ deletedCount: result.deletedCount });
   } catch (err) {
     return res.status(500).json({ message: err.message || 'Failed to purge audio posts' });
+  }
+};
+
+/* DELETE POST */
+export const deletePost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    
+    // Find the post
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    
+    // Check if user owns the post
+    if (post.userId !== userId) {
+      return res.status(403).json({ message: 'Not authorized to delete this post' });
+    }
+    
+    // Delete media files using unified storage service
+    const mediaToDelete = [];
+    
+    if (post.picturePath) {
+      mediaToDelete.push(post.picturePath);
+    }
+    
+    if (post.audioPath) {
+      mediaToDelete.push(post.audioPath);
+    }
+    
+    if (post.mediaPaths && post.mediaPaths.length > 0) {
+      mediaToDelete.push(...post.mediaPaths);
+    }
+    
+    // Delete all media files (works for both local and cloud storage)
+    for (const mediaPath of mediaToDelete) {
+      try {
+        await mediaStorage.deleteFile(mediaPath);
+      } catch (error) {
+        console.error(`Failed to delete media file ${mediaPath}:`, error);
+        // Continue deletion even if media cleanup fails
+      }
+    }
+    
+    // Delete the post from database
+    await Post.findByIdAndDelete(id);
+    
+    // Broadcast deletion to connected clients
+    broadcastPostUpdate({ type: 'post:delete', postId: id });
+    
+    res.status(200).json({ message: 'Post deleted successfully', postId: id });
+  } catch (err) {
+    console.error('deletePost error:', err);
+    res.status(500).json({ message: err.message || 'Failed to delete post' });
   }
 };

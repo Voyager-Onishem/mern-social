@@ -1,6 +1,17 @@
-import Post from "../models/Post.js";
-import User from "../models/User.js";
-import { broadcastPostUpdate } from '../config/socket.js';
+/**
+ * DEPRECATED: This file is no longer used.
+ * 
+ * The application now uses a unified media storage service that abstracts
+ * the differences between local and cloud storage.
+ * 
+ * See: server/services/mediaStorage.js
+ * Use: server/controllers/posts.js (unified controller)
+ * 
+ * This file is kept for reference only and will be removed in future versions.
+ */
+
+// All functionality has been moved to posts.js with unified storage handling
+export default null;
 
 // Helper to normalize a Post document/plain object for JSON responses
 function serializePost(p) {

@@ -1,5 +1,5 @@
 import express from "express";
-import { getFeedPosts, getUserPosts, likePost, addComment, getPost, editComment, deleteComment } from "../controllers/posts.js";
+import { getFeedPosts, getUserPosts, likePost, addComment, getPost, editComment, deleteComment, deletePost } from "../controllers/posts.js";
 import { purgeAudioPosts } from "../controllers/posts.js";
 import { verifyToken } from "../middleware/auth.js";
 
@@ -20,6 +20,10 @@ router.patch("/:id/comment", verifyToken, addComment);
 router.patch("/:id/comment/edit", verifyToken, editComment);
 // Delete a comment
 router.patch("/:id/comment/delete", verifyToken, deleteComment);
+
+/* DELETE */
+// Delete a post (with media cleanup)
+router.delete("/:id", verifyToken, deletePost);
 
 // Maintenance endpoint to purge all audio posts
 router.delete("/purge-audio", verifyToken, purgeAudioPosts);
