@@ -4,14 +4,33 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { MemoryRouter } from 'react-router-dom';
-import reducer from 'state';
+import authReducer from 'state';
+import postsReducer from 'state/postsSlice';
 import { themeSettings } from 'theme';
 import PostWidget from '../PostWidget';
 
+const reducer = {
+  auth: authReducer,
+  posts: postsReducer
+};
+
 function setup(extraState = {}) {
-  const preloaded = { mode: 'light', posts: [], postsLoading: false, sessionSeenPostIds: {}, user: { _id: 'viewer', friends: [] }, token: 't', ...extraState };
+  const preloaded = { 
+    auth: {
+      mode: 'light',
+      user: { _id: 'viewer', friends: [] },
+      token: 't'
+    },
+    posts: {
+      posts: [],
+      loading: false,
+      sessionSeenPostIds: {},
+      pagination: { page: 1, limit: 10, total: 0, pages: 0, hasMore: false }
+    },
+    ...extraState
+  };
   const store = configureStore({ reducer, preloadedState: preloaded });
-  const theme = createTheme(themeSettings(store.getState().mode || 'light'));
+  const theme = createTheme(themeSettings(store.getState().auth?.mode || 'light'));
   const utils = render(
     <Provider store={store}>
       <MemoryRouter>
@@ -46,7 +65,7 @@ describe('PostWidget', () => {
     jest.useRealTimers();
   });
   test('renders basic post info', () => {
-    setup({ user: { _id: 'viewer', friends: [] }, token: 't' });
+    setup();
     expect(screen.getByText(/Hello world/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Post impressions 5/i)).toBeInTheDocument();
   });

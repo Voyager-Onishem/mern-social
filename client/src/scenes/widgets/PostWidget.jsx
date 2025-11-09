@@ -19,7 +19,7 @@ import { timeAgo } from "utils/timeAgo";
 import { objectIdToDate } from "utils/objectId";
 import GiphyPicker from "components/GiphyPicker";
 import { useDispatch, useSelector } from "react-redux";
-import { setPost } from "state";
+import { setPost } from "state/postsSlice";
 import PostActionButton from "components/PostActionButton";
 import Lightbox from "components/Lightbox";
 import { sharePost, statusToMessage } from "utils/share";

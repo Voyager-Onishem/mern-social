@@ -6,8 +6,16 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { MemoryRouter } from 'react-router-dom';
 import { NotificationProvider } from 'components/NotificationProvider';
 import { themeSettings } from 'theme';
-import reducer from 'state';
+import authReducer from 'state';
+import postsReducer from 'state/postsSlice';
+import notificationsReducer from 'state/notificationsSlice';
 import MyPostWidget from '../MyPostWidget';
+
+const reducer = {
+  auth: authReducer,
+  posts: postsReducer,
+  notifications: notificationsReducer
+};
 
 // Mock socketClient to prevent real Socket.io connections in tests
 jest.mock('utils/socketClient', () => ({
@@ -72,9 +80,11 @@ function setupWithDraft(text='Draft text') {
       auth: {
         user: { _id: 'u1', friends: [] }, 
         token: 't',
-        mode: 'light',
+        mode: 'light'
+      },
+      posts: {
         posts: [], 
-        postsLoading: false, 
+        loading: false, 
         sessionSeenPostIds: {},
         pagination: { page: 1, limit: 10, total: 0, pages: 0, hasMore: false }
       },
@@ -100,9 +110,11 @@ describe('MyPostWidget', () => {
         auth: {
           user: { _id: 'u1', friends: [] }, 
           token: 't',
-          mode: 'light',
+          mode: 'light'
+        },
+        posts: {
           posts: [], 
-          postsLoading: false, 
+          loading: false, 
           sessionSeenPostIds: {},
           pagination: { page: 1, limit: 10, total: 0, pages: 0, hasMore: false }
         },

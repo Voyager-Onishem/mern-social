@@ -4,9 +4,15 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { MemoryRouter } from 'react-router-dom';
-import reducer, { setPosts } from 'state';
+import authReducer from 'state';
+import postsReducer, { setPosts } from 'state/postsSlice';
 import { themeSettings } from 'theme';
 import PostsWidget from '../PostsWidget';
+
+const reducer = {
+  auth: authReducer,
+  posts: postsReducer
+};
 
 // Mock IntersectionObserver
 class IOStub {
@@ -58,7 +64,19 @@ afterEach(() => {
 });
 
 function setupWithPosts(posts) {
-  const preloaded = { mode: 'light', posts: [], postsLoading: false, sessionSeenPostIds: {}, user: { _id: 'viewer', friends: [] }, token: 't' };
+  const preloaded = {
+    auth: {
+      mode: 'light',
+      user: { _id: 'viewer', friends: [] },
+      token: 't'
+    },
+    posts: {
+      posts: [],
+      loading: false,
+      sessionSeenPostIds: {},
+      pagination: { page: 1, limit: 10, total: 0, pages: 0, hasMore: false }
+    }
+  };
   const store = configureStore({ reducer, preloadedState: preloaded });
   const theme = createTheme(themeSettings('light'));
   const ui = (

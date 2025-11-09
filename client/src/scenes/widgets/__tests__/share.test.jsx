@@ -6,7 +6,13 @@ import { configureStore } from '@reduxjs/toolkit';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { MemoryRouter } from 'react-router-dom';
 import { themeSettings } from 'theme';
-import reducer, { setLogin, setPosts } from 'state';
+import authReducer, { setLogin } from 'state';
+import postsReducer, { setPosts } from 'state/postsSlice';
+
+const reducer = {
+  auth: authReducer,
+  posts: postsReducer
+};
 
 // Minimal store with required slices/shape
 function makeStore() {

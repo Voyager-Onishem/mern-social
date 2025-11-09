@@ -6,11 +6,16 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { MemoryRouter } from 'react-router-dom';
 import { themeSettings } from 'theme';
 import PostWidget from '../PostWidget';
+import authReducer from 'state';
+import postsReducer from 'state/postsSlice';
+
+const reducer = {
+  auth: authReducer,
+  posts: postsReducer
+};
 
 function makeStore(preloadedState) {
-  // Simple reducer passthrough for test
-  const reducer = (state = preloadedState, action) => state;
-  return configureStore({ reducer });
+  return configureStore({ reducer, preloadedState });
 }
 
 describe('PostWidget audio rendering', () => {
@@ -24,12 +29,17 @@ describe('PostWidget audio rendering', () => {
 
   it('renders audio element when audioPath exists and no picturePath', () => {
     const store = makeStore({
-      mode: 'light',
-      token: 'test-token',
-      user: { _id: 'u1', friends: [] },
-      posts: [],
-      postsLoading: false,
-      sessionSeenPostIds: {},
+      auth: {
+        mode: 'light',
+        token: 'test-token',
+        user: { _id: 'u1', friends: [] }
+      },
+      posts: {
+        posts: [],
+        loading: false,
+        sessionSeenPostIds: {},
+        pagination: { page: 1, limit: 10, total: 0, pages: 0, hasMore: false }
+      }
     });
 
     const theme = createTheme(themeSettings('light'));

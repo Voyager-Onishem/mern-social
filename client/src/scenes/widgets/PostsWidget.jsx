@@ -7,7 +7,7 @@ import {
   markPostSeenThisSession,
   appendPosts,
   setPagination
-} from "state";
+} from "state/postsSlice";
 import { Box, CircularProgress, Skeleton, Typography } from '@mui/material';
 import { useSearchParams } from "react-router-dom";
 import PostWidget from "./PostWidget";
@@ -18,10 +18,10 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 const PostsWidget = ({ userId, isProfile = false }) => {
   const dispatch = useDispatch();
-  const posts = useSelector((state) => state.auth?.posts || []);
+  const posts = useSelector((state) => state.posts?.posts || []);
   const token = useSelector((state) => state.auth?.token);
-  const loading = useSelector((state) => state.auth?.postsLoading || false);
-  const pagination = useSelector((state) => state.auth?.pagination || {
+  const loading = useSelector((state) => state.posts?.loading || false);
+  const pagination = useSelector((state) => state.posts?.pagination || {
     page: 1,
     limit: 10,
     total: 0,
@@ -484,7 +484,7 @@ const PostsWidget = ({ userId, isProfile = false }) => {
   const observerRef = useRef(null);
   const pendingRef = useRef({});
   const timeoutRef = useRef(null);
-  const sessionSeenPostIds = useSelector(state => state.sessionSeenPostIds);
+  const sessionSeenPostIds = useSelector(state => state.posts?.sessionSeenPostIds || {});
   const seenRef = useRef(sessionSeenPostIds);
   useEffect(() => { seenRef.current = sessionSeenPostIds; }, [sessionSeenPostIds]);
 

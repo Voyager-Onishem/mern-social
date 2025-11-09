@@ -8,7 +8,7 @@ import WidgetWrapper from "components/WidgetWrapper";
 import LocationPicker from "components/LocationPicker";
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { addPost } from "state";
+import { addPost } from "state/postsSlice";
 import GiphyPicker from "components/GiphyPicker";
 import { extractFirstGiphyUrl, isGiphyUrl } from "utils/isGiphyUrl";
 import { extractFirstVideo, getEmbedForVideo } from "utils/video";

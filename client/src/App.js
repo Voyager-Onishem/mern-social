@@ -6,7 +6,7 @@ import CreateAdPage from "scenes/createAdPage";
 import HelpPage from "scenes/helpPage";
 import { useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { addPost, setPost } from 'state';
+import { addPost, setPost } from 'state/postsSlice';
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { createTheme } from "@mui/material/styles";
 import { themeSettings } from "./theme";
