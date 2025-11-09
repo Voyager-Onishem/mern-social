@@ -63,6 +63,31 @@ const Navbar = () => {
   const [showFloatingPost, setShowFloatingPost] = useState(false);
   const [openPostModal, setOpenPostModal] = useState(false);
 
+  // Track clicks for scroll-to-top and double-click refresh
+  const lastClickTimeRef = useRef(0);
+  const DOUBLE_CLICK_THRESHOLD = 500; // milliseconds
+
+  const handleLogoClick = () => {
+    const now = Date.now();
+    const timeSinceLastClick = now - lastClickTimeRef.current;
+
+    // Check if already on home page
+    if (window.location.pathname === '/home') {
+      // If double-clicked (within threshold), force refresh
+      if (timeSinceLastClick < DOUBLE_CLICK_THRESHOLD) {
+        window.location.reload();
+      } else {
+        // Single click - scroll to top smoothly
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else {
+      // Not on home page, navigate to home
+      navigate("/home");
+    }
+
+    lastClickTimeRef.current = now;
+  };
+
   // Handle search submit
   const handleSearch = async (e) => {
     e?.preventDefault();
@@ -113,7 +138,7 @@ const Navbar = () => {
           fontWeight="bold"
           fontSize="clamp(1rem, 2rem, 2.25rem)"
           color="primary"
-          onClick={() => navigate("/home")}
+          onClick={handleLogoClick}
           sx={{
             "&:hover": {
               color: primaryLight,
@@ -121,7 +146,7 @@ const Navbar = () => {
             },
           }}
         >
-          Alucon
+          AluCon
         </Typography>
         {isNonMobileScreens && (
           <FlexBetween
