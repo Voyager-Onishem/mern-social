@@ -9,7 +9,6 @@ import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer } from "http";
-import { MongoMemoryServer } from "mongodb-memory-server";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import postRoutes from "./routes/posts.js";
@@ -28,6 +27,7 @@ import { users, posts } from "./data/index.js";
 import { cloudStorageConfig } from './config/cloudStorage.js';
 import { mediaStorage, getPublicUrl } from './services/mediaStorage.js';
 import { initializeSocket } from './config/socket.js';
+import { database } from './services/database.js';
 
 /* CONFIGURATIONS */
 const __filename = fileURLToPath(import.meta.url);
@@ -200,74 +200,48 @@ app.use((err, req, res, next) => {
 /* MONGOOSE SETUP */
 const PORT = process.env.PORT || 6001;
 async function startServer() {
-  let mem;
   try {
-    let mongoUrl = process.env.MONGO_URL;
-    
-    if (!mongoUrl || process.env.NODE_ENV === 'test') {
-      console.warn("Using in-memory MongoDB (" + (process.env.NODE_ENV || 'dev') + ")...");
-      mem = await MongoMemoryServer.create();
-      mongoUrl = mem.getUri();
-      process.on("SIGINT", async () => {
-        try { if (mem) await mem.stop(); } catch {}
-        process.exit(0);
-      });
-    }
-    
-    // Try to connect to MongoDB Atlas
-    try {
-      console.log("Connecting to MongoDB Atlas...");
-      await mongoose.connect(mongoUrl, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 5000, // 5 seconds timeout for server selection
-      });
-      console.log("Successfully connected to MongoDB Atlas!");
-    } catch (atlasError) {
-      // If connection to Atlas fails, fallback to local MongoDB
-      console.error("MongoDB Atlas connection failed:", atlasError.message);
-      console.log("Attempting to connect to local MongoDB...");
-      
-      try {
-        // Try to connect to local MongoDB
-        const localMongoUrl = "mongodb://localhost:27017/mern-social";
-        await mongoose.connect(localMongoUrl, {
-          useNewUrlParser: true,
-          useUnifiedTopology: true,
-          serverSelectionTimeoutMS: 5000,
-        });
-        console.log("Successfully connected to local MongoDB!");
-      } catch (localError) {
-        // If local MongoDB also fails, fallback to in-memory MongoDB
-        console.error("Local MongoDB connection failed:", localError.message);
-        console.log("Falling back to in-memory MongoDB...");
-        
-        mem = await MongoMemoryServer.create();
-        await mongoose.connect(mem.getUri(), {
-          useNewUrlParser: true,
-          useUnifiedTopology: true,
-        });
-        console.log("Successfully connected to in-memory MongoDB!");
-        
-        process.on("SIGINT", async () => {
-          try { if (mem) await mem.stop(); } catch {}
-          process.exit(0);
-        });
-      }
+    // Connect to database using the new service
+    // In development: allows fallback to local/memory if Atlas unavailable
+    // In production: strict mode, requires Atlas connection
+    const connectionType = await database.connect({
+      allowFallback: process.env.NODE_ENV !== 'production', // Only allow fallback in development
+      timeout: 10000 // 10 seconds timeout
+    });
+
+    // Log connection status
+    const status = database.getStatus();
+    console.log('Database Status:', {
+      environment: status.nodeEnv,
+      connectionType: status.connectionType,
+      state: status.stateText
+    });
+
+    // Warn if using in-memory database
+    if (connectionType === 'memory') {
+      console.warn('⚠️  WARNING: Using in-memory database. All data will be lost on server restart!');
+      console.warn('⚠️  To use persistent storage, configure MONGO_URL in .env or run local MongoDB.');
     }
     
     // Initialize Socket.io
     const io = initializeSocket(httpServer);
     console.log("Socket.io initialized successfully");
     
+    // Start HTTP server (skip in test mode)
     if (process.env.NODE_ENV !== 'test') {
-      httpServer.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
+      httpServer.listen(PORT, () => {
+        console.log(`Server listening on http://localhost:${PORT}`);
+        console.log(`Database: ${connectionType}`);
+      });
     }
+
     /* ADD DATA ONE TIME */
     // User.insertMany(users);
     // Post.insertMany(posts);
   } catch (error) {
-    console.error("Mongo/Server startup error:", error);
+    console.error("❌ Server startup failed:", error.message);
+    console.error("Full error:", error);
+    process.exit(1); // Exit with error code in production
   }
 }
 
