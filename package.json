@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "multer": "^1.4.4",
+    "socket.io": "^4.8.1"
+  }
+}

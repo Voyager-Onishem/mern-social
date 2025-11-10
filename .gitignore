@@ -151,8 +151,8 @@ temp/
 bmad-workflow.txt
 team-fullstack.txt
 tools_and_technologies.txt
-package-lock.json
-package.json
+# package-lock.json
+# package.json
 # OS generated files
 .DS_Store
 .DS_Store?
