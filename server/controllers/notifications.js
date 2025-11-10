@@ -87,8 +87,40 @@ export const deleteNotification = async (req, res) => {
 /* UTILITY - Create and emit notification */
 export const createNotification = async (notificationData) => {
   try {
+    // Check for existing similar notification to prevent duplicates
+    // Look for notifications of the same type, from the same user, to the same user, about the same post
+    // within the last 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    
+    const existingNotification = await Notification.findOne({
+      userId: notificationData.userId,
+      type: notificationData.type,
+      fromUserId: notificationData.fromUserId,
+      postId: notificationData.postId,
+      createdAt: { $gte: fiveMinutesAgo }
+    });
+
+    if (existingNotification) {
+      // Don't create duplicate notification, just return the existing one
+      console.log('🚫 Preventing duplicate notification:', {
+        type: notificationData.type,
+        from: notificationData.fromUserId,
+        to: notificationData.userId,
+        existing: existingNotification._id
+      });
+      return existingNotification;
+    }
+
     const notification = new Notification(notificationData);
     await notification.save();
+
+    console.log('✅ Created new notification:', {
+      id: notification._id,
+      type: notification.type,
+      from: notification.fromUserId,
+      to: notification.userId,
+      message: notification.message
+    });
 
     // Emit real-time notification via Socket.io
     const io = getIO();

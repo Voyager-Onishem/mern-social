@@ -16,10 +16,17 @@ export const notificationsSlice = createSlice({
       state.loading = false;
     },
     addNotification: (state, action) => {
-      // Add new notification to the beginning of the list
-      state.notifications.unshift(action.payload);
-      if (!action.payload.read) {
-        state.unreadCount += 1;
+      // Check if notification already exists to prevent duplicates
+      const existingNotification = state.notifications.find(
+        (n) => n._id === action.payload._id
+      );
+      
+      if (!existingNotification) {
+        // Add new notification to the beginning of the list
+        state.notifications.unshift(action.payload);
+        if (!action.payload.read) {
+          state.unreadCount += 1;
+        }
       }
     },
     markAsRead: (state, action) => {

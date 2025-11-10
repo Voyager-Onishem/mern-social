@@ -229,7 +229,7 @@ const Navbar = () => {
               )}
             </IconButton>
           </FlexBetween>
-          <Message sx={{ fontSize: "25px" }} />
+          {/* <Message sx={{ fontSize: "25px" }} /> */}
           <NotificationWidget />
           <IconButton onClick={() => navigate("/help")} aria-label="Help and FAQ">
             <Help sx={{ fontSize: "25px" }} />
@@ -334,7 +334,7 @@ const Navbar = () => {
                 <LightMode sx={{ color: dark, fontSize: "25px" }} />
               )}
             </IconButton>
-            <Message sx={{ fontSize: "25px" }} />
+            {/* <Message sx={{ fontSize: "25px" }} /> */}
             <NotificationWidget />
             <IconButton onClick={() => navigate("/help")} aria-label="Help and FAQ">
               <Help sx={{ fontSize: "25px" }} />

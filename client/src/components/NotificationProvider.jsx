@@ -52,6 +52,14 @@ export const NotificationProvider = ({ children }) => {
 
   // Listen for real-time notifications via Socket.io using custom hook
   const handleNotification = useCallback((notification) => {
+    if (!notification || !notification._id) return;
+    
+    console.log('📩 Received real-time notification:', {
+      id: notification._id,
+      type: notification.type,
+      message: notification.message
+    });
+    
     dispatch(addNotification(notification));
     notify(notification.message, { severity: 'info', duration: 5000 });
   }, [dispatch, notify]);

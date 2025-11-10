@@ -15,6 +15,8 @@ export const useSocketEvent = (eventName, handler, dependencies = []) => {
 
     // Set up listener when socket connects
     const setupListener = (socket) => {
+      // Remove any existing listener first to prevent duplicates
+      socket.off(eventName, handler);
       socket.on(eventName, handler);
     };
 
